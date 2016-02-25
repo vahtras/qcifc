@@ -1,6 +1,7 @@
 import unittest
 import os
-from qm import QuantumChemistry, DaltonFactory
+import numpy
+from ..qm import QuantumChemistry, DaltonFactory
 
 
 class AFTest(unittest.TestCase):
@@ -20,6 +21,10 @@ class AFTest(unittest.TestCase):
 
     def test_wrkdir(self):
         self.assertEqual(self.factory.get_workdir(), self.tmp)
+
+    def test_get_overlap(self):
+        S = self.factory.get_overlap()
+        numpy.testing.assert_allclose(S, [[1.0, 0.65987313], [0.65987313, 1.0]])
 
 if __name__ == "__main__":
     unittest.main()
