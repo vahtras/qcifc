@@ -26,5 +26,12 @@ class AFTest(unittest.TestCase):
         S = self.factory.get_overlap()
         numpy.testing.assert_allclose(S, [[1.0, 0.65987313], [0.65987313, 1.0]])
 
+    def test_get_h1(self):
+        h1 = self.factory.get_one_el_hamiltonian()
+        numpy.testing.assert_allclose(h1, 
+            [[-1.12095946, -0.95937577], [-0.95937577, -1.12095946]]
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,9 @@ class QuantumChemistry(object):
 
     @abc.abstractmethod
     def get_overlap(self): pass
+
+    @abc.abstractmethod
+    def get_one_el_hamiltonian(self): pass
         
 
 
@@ -28,6 +31,14 @@ class DaltonFactory(QuantumChemistry):
         from daltools import one
         S = one.read(
             "OVERLAP", 
+            os.path.join(self.get_workdir(), "AOONEINT")
+            ).unpack().unblock()
+        return S
+
+    def get_one_el_hamiltonian(self):
+        from daltools import one
+        S = one.read(
+            "ONEHAMIL", 
             os.path.join(self.get_workdir(), "AOONEINT")
             ).unpack().unblock()
         return S
