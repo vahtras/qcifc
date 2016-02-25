@@ -16,9 +16,13 @@ class QuantumChemistry(object):
 
     @abc.abstractmethod
     def get_one_el_hamiltonian(self): pass
+
+    @abc.abstractmethod
+    def get_nuclear_repulsion(self): pass
         
 
 
+from daltools import one
 class DaltonFactory(QuantumChemistry):
 
     def __init__(self, tmpdir):
@@ -28,7 +32,6 @@ class DaltonFactory(QuantumChemistry):
         return self.__tmpdir
 
     def get_overlap(self):
-        from daltools import one
         S = one.read(
             "OVERLAP", 
             os.path.join(self.get_workdir(), "AOONEINT")
@@ -36,9 +39,14 @@ class DaltonFactory(QuantumChemistry):
         return S
 
     def get_one_el_hamiltonian(self):
-        from daltools import one
-        S = one.read(
+        h1 = one.read(
             "ONEHAMIL", 
             os.path.join(self.get_workdir(), "AOONEINT")
             ).unpack().unblock()
-        return S
+        return h1
+
+    def get_nuclear_repulsion(self):
+        Z = one.readhead(
+                os.path.join(self.get_workdir(), "AOONEINT")
+                )["potnuc"]
+        return Z

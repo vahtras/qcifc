@@ -32,6 +32,10 @@ class AFTest(unittest.TestCase):
             [[-1.12095946, -0.95937577], [-0.95937577, -1.12095946]]
             )
 
+    def test_get_z(self):
+        Z = self.factory.get_nuclear_repulsion()
+        self.assertAlmostEqual(Z, 0.7151043)
+
 
 if __name__ == "__main__":
     unittest.main()
