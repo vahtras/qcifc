@@ -1,7 +1,7 @@
 import unittest
 import os
 import numpy
-from ..qm import QuantumChemistry, DaltonFactory
+from qcifc.qm import QuantumChemistry, DaltonFactory
 
 
 class AFTest(unittest.TestCase):
@@ -9,6 +9,7 @@ class AFTest(unittest.TestCase):
     def setUp(self):
         self.tmp = os.path.join(os.path.dirname(__file__), 'test_h2.d')
         self.factory = QuantumChemistry.get_factory('Dalton', self.tmp)
+
     def tearDown(self):
         pass
 
