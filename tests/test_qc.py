@@ -8,7 +8,9 @@ class AFTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = os.path.join(os.path.dirname(__file__), 'test_h2.d')
-        self.factory = QuantumChemistry.get_factory('Dalton', self.tmp)
+        self.factory = QuantumChemistry.get_factory('Dalton', 
+            tmpdir=self.tmp
+            )
 
     def tearDown(self):
         pass
