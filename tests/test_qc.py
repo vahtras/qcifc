@@ -1,7 +1,7 @@
 import unittest
 import os
 import numpy
-from qcifc.qm import QuantumChemistry, DaltonFactory
+from qcifc.core import QuantumChemistry, DaltonFactory
 
 
 class AFTest(unittest.TestCase):

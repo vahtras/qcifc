@@ -9,7 +9,7 @@ class QuantumChemistry(object):
         if code == 'Dalton':
             return DaltonFactory(**kwargs)
         else:
-            raise TypeError, "QM %s not implemented" % code
+            raise TypeError("QM %s not implemented" % code)
 
     @abc.abstractmethod
     def get_overlap(self): pass
