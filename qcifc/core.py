@@ -31,6 +31,10 @@ class DaltonFactory(QuantumChemistry):
     def get_workdir(self):
         return self.__tmpdir
 
+    def set_workdir(self, tmpdir):
+        self.__tmpdir = tmpdir
+
+
     def get_overlap(self):
         S = one.read(
             "OVERLAP", 
