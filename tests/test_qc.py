@@ -62,9 +62,14 @@ class AFTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             QuantumChemistry.get_factory('Gamess')
 
-    def test_wrkdir(self):
+    def test_get_wrkdir(self):
         """Get factory workdir"""
         self.assertEqual(self.factory.get_workdir(), self.tmp)
+
+    def test_set_wrkdir(self):
+        """Get factory workdir"""
+        self.factory.set_workdir('/tmp/123')
+        self.assertEqual(self.factory.get_workdir(), '/tmp/123')
 
     def test_get_overlap(self):
         """Get overlap"""

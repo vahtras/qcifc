@@ -15,17 +15,17 @@ class QuantumChemistry(object):
             raise TypeError("QM %s not implemented" % code)
 
     @abc.abstractmethod
-    def get_overlap(self):
+    def get_overlap(self):#pragma: no cover
         """Abstract overlap getter"""
         pass
 
     @abc.abstractmethod
-    def get_one_el_hamiltonian(self):
+    def get_one_el_hamiltonian(self):#pragma: no cover
         """Abstract h1 getter"""
         pass
 
     @abc.abstractmethod
-    def get_nuclear_repulsion(self):
+    def get_nuclear_repulsion(self):#pragma: no cover
         """Abstract Z getter"""
         pass
 
@@ -33,6 +33,7 @@ class QuantumChemistry(object):
 
 from daltools import one
 import two.core
+import two.vb
 
 class DaltonFactory(QuantumChemistry):
     """Concrete 'factory', Dalton"""
@@ -84,4 +85,22 @@ class DaltonFactory(QuantumChemistry):
             self.get_densities(),
             filename=os.path.join(self.get_workdir(), "AOTWOINT"),
             f2py=False
+            )
+
+    def get_two_el_right_hessian(self, d_am, delta, filename=None):
+        """Calculate <K|H|d2L>"""
+        if filename is None:#pragma: no cover
+            filename=os.path.join(self.get_workdir(), "AOTWOINT")
+        return two.vb.vb_transform(
+            d_am, delta,
+            filename=filename
+            )
+
+    def get_two_el_leftright_hessian(self, d_ma, d_am, delta1, delta2, filename=None):
+        """Calculate <K|H|d2L>"""
+        if filename is None:#pragma: no cover
+            filename=os.path.join(self.get_workdir(), "AOTWOINT")
+        return two.vb.vb_transform2(
+            d_ma, d_am, delta1, delta2,
+            filename=filename
             )
