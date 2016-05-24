@@ -95,7 +95,6 @@ class AFTest(unittest.TestCase):
     def test_get_mo(self):
         """Read MO coefficients"""
         cmo = self.factory.get_mo()
-        print cmo
         numpy.testing.assert_allclose(cmo, [[.54914538, -1.20920006],
             [.54914538, 1.20920006]])
 
