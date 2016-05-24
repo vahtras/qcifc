@@ -31,7 +31,7 @@ class QuantumChemistry(object):
 
 
 
-from daltools import one
+from daltools import one, sirrst
 import two.core
 import two.vb
 
@@ -70,6 +70,13 @@ class DaltonFactory(QuantumChemistry):
         return one.readhead(
             os.path.join(self.get_workdir(), "AOONEINT")
             )["potnuc"]
+
+    def get_mo(self):
+        """Get molecular orbitals from restart file"""
+        rst = sirrst.SiriusRestart(
+            os.path.join(self.get_workdir(), "SIRIUS.RST")
+            )
+        return rst.cmo.unblock()
 
     def set_densities(self, *das):
         """Set densities"""
