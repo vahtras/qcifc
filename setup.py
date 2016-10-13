@@ -7,6 +7,6 @@ setup(name="qcifc",
     packages = ["qcifc"],
     author="Olav Vahtras",
     author_email="vahtras@kth.se",
-    install_requires = ["daltools", "util"],
+    install_requires = ["daltools"],
     description = 'Quantum Chemistry Interface',
     )
