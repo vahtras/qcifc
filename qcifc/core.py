@@ -39,7 +39,7 @@ class DaltonFactory(QuantumChemistry):
     """Concrete 'factory', Dalton"""
 
     def __init__(self, **kwargs):
-        self.__tmpdir = kwargs['tmpdir']
+        self.__tmpdir = kwargs.get('tmpdir', '/tmp')
         self._da = None
         self._db = None
 
