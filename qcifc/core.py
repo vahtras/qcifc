@@ -31,7 +31,7 @@ class QuantumChemistry(object):
 
 
 
-from daltools import one, sirrst
+from daltools import one, sirrst, sirifc
 import two.core
 import two.vb
 
@@ -111,3 +111,8 @@ class DaltonFactory(QuantumChemistry):
             d_ma, d_am, delta1, delta2,
             filename=filename
             )
+
+    def get_orbital_diagonal(self, filename=None):
+        if filename is None:
+            filename = os.path.join(self.get_workdir(), "SIRIFC")
+        return sirifc.SirIfc(filename).orbdiag

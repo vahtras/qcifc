@@ -107,5 +107,10 @@ class AFTest(unittest.TestCase):
         _, f_b = self.factory.get_two_el_fock()
         numpy.testing.assert_allclose(f_b, self.fbref)
 
+    def test_get_orbhess(self):
+        """Get diagonal orbital hessian"""
+        od = self.factory.get_orbital_diagonal() 
+        numpy.testing.assert_allclose(od, [4.998789307784559])
+
 if __name__ == "__main__":
     unittest.main()
