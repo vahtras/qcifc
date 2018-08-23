@@ -31,7 +31,9 @@ class QuantumChemistry(object):
 
 
 
+import numpy
 from daltools import one, sirrst, sirifc, prop
+from dalmisc import oli
 import two.core
 import two.vb
 
@@ -117,10 +119,14 @@ class DaltonFactory(QuantumChemistry):
     def get_orbital_diagonal(self, filename=None):
         if filename is None:
             filename = os.path.join(self.get_workdir(), "SIRIFC")
-        return sirifc.SirIfc(filename).orbdiag
+        od = sirifc.SirIfc(filename).orbdiag
+        return numpy.append(od, od)
 
     def get_rhs(self, label):
         return prop.grad(
             self.labels[label],
             tmpdir=self.get_workdir()
         )
+
+    def e2n(self, trial):
+        return oli.e2n(trial, tmpdir=self.get_workdir())

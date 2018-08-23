@@ -111,12 +111,19 @@ class AFTest(unittest.TestCase):
     def test_get_orbhess(self):
         """Get diagonal orbital hessian"""
         od = self.factory.get_orbital_diagonal() 
-        numpy.testing.assert_allclose(od, [4.998789307784559])
+        numpy.testing.assert_allclose(od, [4.99878931, 4.99878931])
 
     def test_get_rhs(self):
         """Get property gradient right-hand side"""
         rhs,  = self.factory.get_rhs('z') 
         numpy.testing.assert_allclose(rhs, [1.86111268, -1.86111268])
+
+    def test_oli(self):
+        """Linear transformation E2*N"""
+        e2n = self.factory.e2n([1, 0])
+        numpy.testing.assert_allclose(e2n, [1.89681370, -0.36242092])
+        e2n = self.factory.e2n([0, 1])
+        numpy.testing.assert_allclose(e2n, [-0.36242092, 1.89681370])
 
 if __name__ == "__main__":
     unittest.main()
