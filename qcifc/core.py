@@ -31,12 +31,14 @@ class QuantumChemistry(object):
 
 
 
-from daltools import one, sirrst, sirifc
+from daltools import one, sirrst, sirifc, prop
 import two.core
 import two.vb
 
 class DaltonFactory(QuantumChemistry):
     """Concrete 'factory', Dalton"""
+
+    labels = {'z': 'ZDIPLEN'}
 
     def __init__(self, **kwargs):
         self.__tmpdir = kwargs.get('tmpdir', '/tmp')
@@ -116,3 +118,9 @@ class DaltonFactory(QuantumChemistry):
         if filename is None:
             filename = os.path.join(self.get_workdir(), "SIRIFC")
         return sirifc.SirIfc(filename).orbdiag
+
+    def get_rhs(self, label):
+        return prop.grad(
+            self.labels[label],
+            tmpdir=self.get_workdir()
+        )

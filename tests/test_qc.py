@@ -1,4 +1,5 @@
 import unittest
+import pytest
 import os
 import numpy
 from qcifc.core import QuantumChemistry, DaltonFactory
@@ -80,8 +81,8 @@ class AFTest(unittest.TestCase):
     def test_get_mo(self):
         """Read MO coefficients"""
         cmo = self.factory.get_mo()
-        numpy.testing.assert_allclose(cmo, [[.54914538, -1.20920006],
-            [.54914538, 1.20920006]])
+        numpy.testing.assert_allclose(cmo, [[.54884227, -1.212451936],
+            [.54884227, 1.21245193]])
 
     def test_set__get_dens_a(self):
         """Set density test"""
@@ -111,6 +112,11 @@ class AFTest(unittest.TestCase):
         """Get diagonal orbital hessian"""
         od = self.factory.get_orbital_diagonal() 
         numpy.testing.assert_allclose(od, [4.998789307784559])
+
+    def test_get_rhs(self):
+        """Get property gradient right-hand side"""
+        rhs,  = self.factory.get_rhs('z') 
+        numpy.testing.assert_allclose(rhs, [1.86111268, -1.86111268])
 
 if __name__ == "__main__":
     unittest.main()
