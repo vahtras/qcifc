@@ -5,3 +5,4 @@ htmlcov
 .cache
 .coverage
 *ipynb*
+tmp
