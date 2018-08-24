@@ -129,4 +129,31 @@ class DaltonFactory(QuantumChemistry):
         )
 
     def e2n(self, trial):
-        return oli.e2n(trial, tmpdir=self.get_workdir())
+        b = numpy.array(trial)
+        u = oli.e2n(b, tmpdir=self.get_workdir()).reshape(b.shape)
+        return u
+
+    def s2n(self, trial):
+        return oli.s2n(trial, tmpdir=self.get_workdir())
+
+    def initial_guess(self, label):
+        V = self.get_rhs(label)
+        od = self.get_orbital_diagonal()
+        ig = (V/od).reshape((len(od), 1))
+        return ig
+
+    def lr_solve(self, label):
+        from util.full import matrix
+        b  = self.initial_guess(label).view(matrix)
+        maxit = 10
+        for i in range(maxit):
+            e2r = b.T*self.e2n(b)
+            v = self.get_rhs(label)[0].view(matrix)
+            vr = b.T*v
+            nr = vr/e2r
+            n = b*nr
+            resid = (self.e2n(n) - v).norm2()
+            print(i, -n*v, resid)
+            if resid < 1e-8:
+                break
+        return n
