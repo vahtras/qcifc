@@ -6,3 +6,5 @@ htmlcov
 .coverage
 *ipynb*
 tmp
+errors.err
+*.log
