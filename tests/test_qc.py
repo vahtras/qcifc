@@ -17,25 +17,6 @@ class AFTest(unittest.TestCase):
             tmpdir=self.tmp
             )
 
-        self.daref = numpy.array([
-            [1., 0],
-            [0., 1.]
-            ])
-
-        self.dbref = numpy.array([
-            [1., 0],
-            [0., 0]
-            ])
-
-        self.faref = numpy.array([
-            [1.04701025 , 0.44459112],
-            [0.44459112, 0.8423992]
-            ])
-
-        self.fbref = numpy.array([
-            [1.34460081, 0.88918225],
-            [0.88918225, 1.61700513]
-            ])
 
 
     def tearDown(self):
@@ -58,6 +39,34 @@ class AFTest(unittest.TestCase):
         """Get factory workdir"""
         self.factory.set_workdir('/tmp/123')
         self.assertEqual(self.factory.get_workdir(), '/tmp/123')
+
+class TestMinimalH2(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = os.path.join(os.path.dirname(__file__), 'test_h2.d')
+        self.factory = QuantumChemistry.get_factory(
+            'Dalton',
+            tmpdir=self.tmp
+            )
+        self.daref = numpy.array([
+            [1., 0],
+            [0., 1.]
+            ])
+
+        self.dbref = numpy.array([
+            [1., 0],
+            [0., 0]
+            ])
+
+        self.faref = numpy.array([
+            [1.04701025 , 0.44459112],
+            [0.44459112, 0.8423992]
+            ])
+
+        self.fbref = numpy.array([
+            [1.34460081, 0.88918225],
+            [0.88918225, 1.61700513]
+            ])
 
     def test_get_overlap(self):
         """Get overlap"""
