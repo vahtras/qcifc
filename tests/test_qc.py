@@ -163,5 +163,10 @@ class TestMinimalH2(unittest.TestCase):
             [ 0.82378017, -0.82378017],
         )
 
+    def test_lr(self):
+        n = self.factory.lr_solve('z')
+        v, = self.factory.get_rhs('z')
+        npt.assert_allclose((n&v), 3.066295447276)
+
 if __name__ == "__main__":
     unittest.main()

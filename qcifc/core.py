@@ -142,7 +142,7 @@ class DaltonFactory(QuantumChemistry):
         ig = (V/od).reshape((len(od), 1))
         return ig
 
-    def lr_solve(self, label):
+    def lr_solve(self, label, w=None):
         from util.full import matrix
         b  = self.initial_guess(label).view(matrix)
         maxit = 10
