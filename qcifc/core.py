@@ -131,7 +131,15 @@ class DaltonFactory(QuantumChemistry):
 
     def e2n(self, trial):
         b = numpy.array(trial)
-        u = oli.e2n(b, tmpdir=self.get_workdir()).reshape(b.shape)
+        u = numpy.ndarray(b.shape)
+        if len(b.shape)== 1:
+            u = oli.e2n(b, tmpdir=self.get_workdir())#.reshape(b.shape)
+        elif len(b.shape) == 2:
+            rows, columns = b.shape
+            for c in range(columns):
+                u[:, c] = oli.e2n(b[:, c], tmpdir=self.get_workdir())
+        else:
+            raise TypeError
         return u
 
     def s2n(self, trial):
@@ -154,7 +162,8 @@ class DaltonFactory(QuantumChemistry):
         b  = self.initial_guess(label, w).view(matrix)
         maxit = 10
         for i in range(maxit):
-            e2r = b.T*self.e2n(b)
+            e2b = self.e2n(b).view(matrix)
+            e2r = b.T*e2b
             v = self.get_rhs(label)[0].view(matrix)
             vr = b.T*v
             nr = vr/e2r

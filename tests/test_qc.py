@@ -101,6 +101,10 @@ def test_get_rhs(qcp):
     [
         ([1, 0], [1.89681370, -0.36242092]),
         ([0, 1], [-0.36242092, 1.89681370]),
+        ([[1, 0],
+          [0, 1]],
+         [[1.89681370, -0.36242092],
+          [-0.36242092, 1.89681370]]),
     ]
 )
 def test_oli(qcp, trials):
@@ -137,10 +141,8 @@ def test_initial_guess(qcp, wlr):
     )
 
 def test_solve(qcp):
-    npt.assert_allclose(
-        qcp.lr_solve('z').T,
-        [ 0.82378017, -0.82378017],
-    )
+    Nz = qcp.lr_solve('z')
+    npt.assert_allclose(Nz, [ 0.82378017, -0.82378017])
 
 @pytest.mark.skip
 @pytest.mark.parametrize('wlr',
