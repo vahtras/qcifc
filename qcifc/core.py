@@ -143,7 +143,17 @@ class DaltonFactory(QuantumChemistry):
         return u
 
     def s2n(self, trial):
-        return oli.s2n(trial, tmpdir=self.get_workdir())
+        b = numpy.array(trial)
+        u = numpy.ndarray(b.shape)
+        if len(b.shape)== 1:
+            u = oli.s2n(b, tmpdir=self.get_workdir())
+        elif len(b.shape) == 2:
+            rows, columns = b.shape
+            for c in range(columns):
+                u[:, c] = oli.s2n(b[:, c], tmpdir=self.get_workdir())
+        else:
+            raise TypeError
+        return u
 
     def initial_guess(self, label, w=0):
         V = self.get_rhs(label)
@@ -163,10 +173,12 @@ class DaltonFactory(QuantumChemistry):
         maxit = 10
         for i in range(maxit):
             e2b = self.e2n(b).view(matrix)
-            e2r = b.T*e2b
+            s2b = self.s2n(b).view(matrix)
+            t2r = b.T*(e2b-w*s2b)
+            print(t2r)
             v = self.get_rhs(label)[0].view(matrix)
             vr = b.T*v
-            nr = vr/e2r
+            nr = vr/t2r
             n = b*nr
             resid = (self.e2n(n) - v).norm2()
             print(i, -n*v, resid)

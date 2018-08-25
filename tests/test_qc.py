@@ -126,7 +126,6 @@ def test_sli(qcp):
         atol=absolute_tolerance
     )
 
-#@pytest.mark.skip
 @pytest.mark.parametrize('wlr',
     [(0, [[0.37231269, -0.37231269]]),
      (0.5, [[ 0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]])],
@@ -140,11 +139,16 @@ def test_initial_guess(qcp, wlr):
         lr,
     )
 
-def test_solve(qcp):
-    Nz = qcp.lr_solve('z')
-    npt.assert_allclose(Nz, [ 0.82378017, -0.82378017])
+@pytest.mark.parametrize('wlr',
+    [(0, [0.82378017, -0.82378017]),
+     (0.5, [1.91230027, -0.40322064])],
+    ids=['0', '0.5']
+)
+def test_solve(qcp, wlr):
+    w, lr = wlr
+    Nz = qcp.lr_solve('z', w)
+    npt.assert_allclose(Nz, lr)
 
-@pytest.mark.skip
 @pytest.mark.parametrize('wlr',
     [(0, 3.066295447276), (0.5, 4.309445328973108)],
     ids=['0', '0.5']
