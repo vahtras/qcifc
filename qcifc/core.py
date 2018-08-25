@@ -1,6 +1,7 @@
 """Abstrace interfact to QM codes"""
 import abc
 import os
+from util import full
 
 class QuantumChemistry(object):
     """Abstract factory"""
@@ -136,15 +137,21 @@ class DaltonFactory(QuantumChemistry):
     def s2n(self, trial):
         return oli.s2n(trial, tmpdir=self.get_workdir())
 
-    def initial_guess(self, label):
+    def initial_guess(self, label, w=0):
         V = self.get_rhs(label)
         od = self.get_orbital_diagonal()
-        ig = (V/od).reshape((len(od), 1))
+        #fix
+        sd = 2*numpy.ones(len(od))
+        sd[len(od)//2:] = -2
+        td = od - w*sd
+        ig = (V/td).reshape((len(od), 1))
+        if w != 0:
+            ig = bappend(ig, swap(ig))
         return ig
 
-    def lr_solve(self, label, w=None):
+    def lr_solve(self, label, w=0):
         from util.full import matrix
-        b  = self.initial_guess(label).view(matrix)
+        b  = self.initial_guess(label, w).view(matrix)
         maxit = 10
         for i in range(maxit):
             e2r = b.T*self.e2n(b)
@@ -157,3 +164,15 @@ class DaltonFactory(QuantumChemistry):
             if resid < 1e-8:
                 break
         return n
+
+def swap(t):
+    from util import full
+    r, c = t.shape
+    print(r, c)
+    assert c == 1
+    rh = r // 2
+    new = full.init([numpy.append(t[rh:, :], t[:rh, :])])
+    return new
+
+def bappend(b1, b2):
+    return numpy.append(b1, b2, axis=1).view(full.matrix)

@@ -97,12 +97,16 @@ def test_get_rhs(qcp):
     rhs,  = qcp.get_rhs('z',) 
     npt.assert_allclose(rhs, [1.86111268, -1.86111268])
 
-def test_oli(qcp):
+@pytest.mark.parametrize('trials',
+    [
+        ([1, 0], [1.89681370, -0.36242092]),
+        ([0, 1], [-0.36242092, 1.89681370]),
+    ]
+)
+def test_oli(qcp, trials):
     """Linear transformation E2*N"""
-    e2n = qcp.e2n([1, 0])
-    numpy.testing.assert_allclose(e2n, [1.89681370, -0.36242092])
-    e2n = qcp.e2n([0, 1])
-    npt.assert_allclose(e2n, [-0.36242092, 1.89681370])
+    n, e2n = trials
+    numpy.testing.assert_allclose(qcp.e2n(n), e2n)
 
 def test_sli(qcp):
     """Linear transformation E2*N"""
@@ -118,11 +122,18 @@ def test_sli(qcp):
         atol=absolute_tolerance
     )
 
-def test_initial_guess(qcp):
+#@pytest.mark.skip
+@pytest.mark.parametrize('wlr',
+    [(0, [[0.37231269, -0.37231269]]),
+     (0.5, [[ 0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]])],
+    ids=['0', '0.5']
+)
+def test_initial_guess(qcp, wlr):
     """form paired trialvectors from rhs/orbdiag"""
+    w, lr = wlr
     npt.assert_allclose(
-        qcp.initial_guess('z').T,
-        [[0.37231269, -0.37231269]]
+        qcp.initial_guess('z', w).T,
+        lr,
     )
 
 def test_solve(qcp):
@@ -131,9 +142,13 @@ def test_solve(qcp):
         [ 0.82378017, -0.82378017],
     )
 
-@pytest.mark.parametrize('wlr', [(0, 3.066295447276)], ids=['0'])
+@pytest.mark.skip
+@pytest.mark.parametrize('wlr',
+    [(0, 3.066295447276), (0.5, 4.309445328973108)],
+    ids=['0', '0.5']
+)
 def test_lr(qcp, wlr):
     w, lr = wlr
-    n = qcp.lr_solve('z')
+    n = qcp.lr_solve('z', w)
     v, = qcp.get_rhs('z')
     npt.assert_allclose((n&v), lr)
