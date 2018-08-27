@@ -8,3 +8,5 @@ htmlcov
 tmp
 errors.err
 *.log
+*.out
+*.gz
