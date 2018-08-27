@@ -43,7 +43,7 @@ class TestH2O(TestBase):
         self.H1 = numpy.load(os.path.join(self.tmpdir, 'H1.npy'))
         self.H2 = numpy.load(os.path.join(self.tmpdir, 'H2.npy'))
 
-        self.factory = qcifc.core.QuantumChemistry.get_factory(
+        self.factory = qcifc.core.QuantumChemistry.set_code(
             'Dalton',
             tmpdir=self.tmpdir
             )

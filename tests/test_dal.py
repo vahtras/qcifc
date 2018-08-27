@@ -6,11 +6,11 @@ import numpy.testing as npt
 
 from qcifc.core import QuantumChemistry, DaltonFactory
 
-@pytest.fixture
-def qcp():
+@pytest.fixture(params=['Dalton', 'DaltonDummy'])
+def qcp(request):
     tmp = os.path.join(os.path.dirname(__file__), 'test_h2.d')
-    factory = QuantumChemistry.get_factory(
-            'Dalton',
+    factory = QuantumChemistry.set_code(
+            request.param,
             tmpdir=tmp,
             )
     return factory
@@ -22,7 +22,7 @@ def test_create_dalton_factory(qcp):
 def test_unknown_raises_typeerror(qcp):
     """Unknown code raises TypeError"""
     with pytest.raises(TypeError):
-        QuantumChemistry.get_factory('Gamess')
+        QuantumChemistry.set_code('Gamess')
 
 def test_get_wrkdir(qcp):
     """Get factory workdir"""
@@ -150,11 +150,9 @@ def test_solve(qcp, wlr):
     npt.assert_allclose(Nz, lr)
 
 @pytest.mark.parametrize('wlr',
-    [(0, 3.066295447276), (0.5, 4.309445328973108)],
+    [(0, -3.066295447276), (0.5, -4.309445328973108)],
     ids=['0', '0.5']
 )
 def test_lr(qcp, wlr):
     w, lr = wlr
-    n = qcp.lr_solve('z', w)
-    v, = qcp.get_rhs('z')
-    npt.assert_allclose((n&v), lr)
+    npt.assert_allclose(qcp.lr('z;z',w), lr)
