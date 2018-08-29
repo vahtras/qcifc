@@ -10,3 +10,4 @@ errors.err
 *.log
 *.out
 *.gz
+*.[0-9]

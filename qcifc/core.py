@@ -158,13 +158,14 @@ class DaltonFactory(QuantumChemistry):
         return u
 
     def initial_guess(self, label, w=0):
-        V = self.get_rhs(label)
+        #import pdb; pdb.set_trace()
+        V, = self.get_rhs(label)
         od = self.get_orbital_diagonal()
         #fix
         sd = 2*numpy.ones(len(od))
         sd[len(od)//2:] = -2
         td = od - w*sd
-        ig = (V/td).reshape((len(od), 1))
+        ig = (V/td).reshape((len(V), 1))
         if w != 0:
             ig = bappend(ig, swap(ig))
         return ig
