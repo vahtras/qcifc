@@ -125,6 +125,12 @@ class DaltonFactory(QuantumChemistry):
         od = sirifc.SirIfc(filename).orbdiag
         return numpy.append(od, od)
 
+    def get_overlap_diagonal(self, filename=None):
+        od = self.get_orbital_diagonal()
+        sd = 2*numpy.ones(len(od))
+        sd[len(od)//2:] *= -1
+        return sd
+
     def get_rhs(self, label):
         return prop.grad(
             self.labels[label],
@@ -173,6 +179,7 @@ class DaltonFactory(QuantumChemistry):
     def lr_solve(self, label, w=0):
         from util.full import matrix
         b  = self.initial_guess(label, w).view(matrix)
+        td = self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
         maxit = 10
         for i in range(maxit):
             e2b = self.e2n(b).view(matrix)
@@ -182,9 +189,12 @@ class DaltonFactory(QuantumChemistry):
             vr = b.T*v
             nr = vr/t2r
             n = b*nr
-            resid = (self.e2n(n) - v).norm2()
-            if resid < 1e-8:
+            residual = self.e2n(n)-w*self.s2n(n) - v
+            print(i, -n&v,  residual.norm2())
+            if residual.norm2() < 1e-8:
                 break
+            new_trial = (residual/td).reshape((len(v), 1))
+            b = bappend(b, new_trial)
         return n
 
     def lr(self, label, w=0):

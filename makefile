@@ -3,6 +3,6 @@ test:
 debug:
 	python -m pytest --pdb tests
 testv:
-	python -m pytest -v --cov=qcifc --cov-report="html" tests
+	python -m pytest -v --cov=qcifc --cov-report="html" tests| tee errors.err
 testx:
-	python -m pytest -x --cov=qcifc --cov-report="html" tests
+	python -m pytest -x --cov=qcifc --cov-report="html" tests| tee errors.err

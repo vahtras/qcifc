@@ -34,6 +34,12 @@ def test_get_orbhess(mod, qcp):
  10.82520425, 11.346842,   15.07835893,  1.24322897,  1.45405338,  1.45405338,
   1.84201578,  2.18867709,  2.18867709,  2.20422202,  2.72585977,  6.4573767, 
     ])
+
+def test_get_s2_diagonal(mod, qcp):
+    """Get diagonal overlap hessian"""
+    sd = qcp.get_overlap_diagonal() 
+    lsd = len(sd)
+    npt.assert_allclose(sd, [2.0]*(lsd//2) + [-2.0]*(lsd//2))
     
 
 def test_get_rhs(mod, qcp):
@@ -59,7 +65,7 @@ def test_get_rhs(mod, qcp):
     [
         (
             0.0, 
-            [1.18684846e-02, -2.36093343e-17,  2.85253416e-17,
+           [[1.18684846e-02, -2.36093343e-17,  2.85253416e-17,
              1.57850196e-02,  1.93784770e-18,  7.84580699e-18,
             -2.40843568e-02,  2.06714600e-02, -2.70606941e-03,
             -1.00688388e+00,  1.37892944e-15, -1.70971849e-15,
@@ -70,17 +76,16 @@ def test_get_rhs(mod, qcp):
              2.40843568e-02, -2.06714600e-02,  2.70606941e-03,
              1.00688388e+00, -1.37892944e-15,  1.70971849e-15,
              6.26067085e-03,  6.08030627e-17,  3.03925913e-16,
-             1.58766612e-02, -7.61964293e-01, -5.33591643e-02]
+             1.58766612e-02, -7.61964293e-01, -5.33591643e-02]]
         ),
     ],
     ids=['0.0']
 )
-@pytest.mark.skip()
 def test_initial_guess(mod, qcp, wlr):
     """form paired trialvectors from rhs/orbdiag"""
     w, lr = wlr
     npt.assert_allclose(
-        qcp.initial_guess('z', w),
+        qcp.initial_guess('z', w).T,
         lr,
     )
 
