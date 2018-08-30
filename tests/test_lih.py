@@ -89,7 +89,6 @@ def test_initial_guess(mod, qcp, wlr):
         lr,
     )
 
-@pytest.mark.skip()
 @pytest.mark.parametrize('wlr',
     [(0, (-20.869910, -20.869910, -17.754933,)),
      (0.03, (-21.3928977, -21.3928977, -18.183962))],
