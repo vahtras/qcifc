@@ -126,10 +126,15 @@ class DaltonFactory(QuantumChemistry):
         return numpy.append(od, od)
 
     def get_overlap_diagonal(self, filename=None):
-        od = self.get_orbital_diagonal()
-        sd = 2*numpy.ones(len(od))
-        sd[len(od)//2:] *= -1
-        return sd
+        if filename is None:
+            filename = os.path.join(self.get_workdir(), "SIRIFC")
+        ifc = sirifc.SirIfc(filename)
+        lsd = ifc.nwopt
+        sd = numpy.ones((2, lsd))
+        for i in (0, 1):
+            sd[i, ifc.nisht*ifc.nasht: ifc.nisht*(ifc.norbt - ifc.nisht)] *= 2
+        sd[1, :] *= -1
+        return sd.flatten()
 
     def get_rhs(self, label):
         return prop.grad(
@@ -164,12 +169,10 @@ class DaltonFactory(QuantumChemistry):
         return u
 
     def initial_guess(self, label, w=0):
-        #import pdb; pdb.set_trace()
         V, = self.get_rhs(label)
         od = self.get_orbital_diagonal()
+        sd = self.get_overlap_diagonal()
         #fix
-        sd = 2*numpy.ones(len(od))
-        sd[len(od)//2:] = -2
         td = od - w*sd
         ig = (V/td).reshape((len(V), 1))
         if w != 0:
@@ -178,6 +181,7 @@ class DaltonFactory(QuantumChemistry):
 
     def lr_solve(self, label, w=0):
         from util.full import matrix
+        v = self.get_rhs(label)[0].view(matrix)
         b  = self.initial_guess(label, w).view(matrix)
         td = self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
         maxit = 10
@@ -185,7 +189,6 @@ class DaltonFactory(QuantumChemistry):
             e2b = self.e2n(b).view(matrix)
             s2b = self.s2n(b).view(matrix)
             t2r = b.T*(e2b-w*s2b)
-            v = self.get_rhs(label)[0].view(matrix)
             vr = b.T*v
             nr = vr/t2r
             n = b*nr
@@ -223,3 +226,29 @@ class DaltonFactoryDummy(DaltonFactory):
         E2 = full.init([self.e2n(i) for i in numpy.eye(row_dim)])
         S2 = full.init([self.s2n(i) for i in numpy.eye(row_dim)])
         return V/(E2-w*S2)
+
+    def get_overlap_diagonal(self, filename=None):
+        if filename is None:
+            filename = os.path.join(self.get_workdir(), "SIRIFC")
+        ifc = sirifc.SirIfc(filename)
+        n = 2*ifc.nwopt
+        sd = numpy.array(
+            [
+                oli.s2n(c, tmpdir=self.get_workdir())
+                    for c in numpy.eye(n)
+            ]
+        ).diagonal()
+        return sd
+
+    def get_orbital_hessian(self, filename=None):
+        if filename is None:
+            filename = os.path.join(self.get_workdir(), "SIRIFC")
+        ifc = sirifc.SirIfc(filename)
+        n = 2*ifc.nwopt
+        e2_diagonal = numpy.array(
+            [
+                oli.e2n(c, tmpdir=self.get_workdir())
+                    for c in numpy.eye(n)
+            ]
+        ).diagonal()
+        return e2_diagonal
