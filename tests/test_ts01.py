@@ -18,8 +18,8 @@ def qcp(request):
 def mod():
     tmpdir = os.path.join(os.path.dirname(__file__), 'test_ts01.d')
     os.chdir(tmpdir)
-    subprocess.call(['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', 'TS01'])
-    subprocess.call(['tar', 'xvfz', 'hf_TS01.tar.gz'])
+    subprocess.call(['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', 'ts01'])
+    subprocess.call(['tar', 'xvfz', 'hf_ts01.tar.gz'])
     yield
     subprocess.call('rm *.[0-9] DALTON.* *AO* *SIR* *RSP* molden.inp', shell=True)
     
