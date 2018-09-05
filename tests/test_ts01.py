@@ -5,9 +5,11 @@ import numpy.testing as npt
 
 from qcifc.core import QuantumChemistry, DaltonFactory
 
+CASE = 'ts01'
+
 @pytest.fixture(params=['DaltonDummy', 'Dalton'])
 def qcp(request):
-    tmp = os.path.join(os.path.dirname(__file__), 'test_ts01.d')
+    tmp = os.path.join(os.path.dirname(__file__), f'test_{CASE}.d')
     factory = QuantumChemistry.set_code(
             request.param,
             tmpdir=tmp,
@@ -16,10 +18,10 @@ def qcp(request):
 
 @pytest.fixture(scope='module')
 def mod():
-    tmpdir = os.path.join(os.path.dirname(__file__), 'test_ts01.d')
+    tmpdir = os.path.join(os.path.dirname(__file__), f'test_{CASE}.d')
     os.chdir(tmpdir)
-    subprocess.call(['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', 'ts01'])
-    subprocess.call(['tar', 'xvfz', 'hf_ts01.tar.gz'])
+    subprocess.call(['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', CASE])
+    subprocess.call(['tar', 'xvfz', f'hf_{CASE}.tar.gz'])
     yield
     subprocess.call('rm *.[0-9] DALTON.* *AO* *SIR* *RSP* molden.inp', shell=True)
     
