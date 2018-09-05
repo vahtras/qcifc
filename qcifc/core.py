@@ -184,7 +184,7 @@ class DaltonFactory(QuantumChemistry):
         v = self.get_rhs(label)[0].view(matrix)
         b  = self.initial_guess(label, w).view(matrix)
         td = self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
-        maxit = 10
+        maxit = 20
         for i in range(maxit):
             e2b = self.e2n(b).view(matrix)
             s2b = self.s2n(b).view(matrix)
