@@ -179,12 +179,11 @@ class DaltonFactory(QuantumChemistry):
             ig = bappend(ig, swap(ig))
         return ig
 
-    def lr_solve(self, label, w=0):
+    def lr_solve(self, label, w=0, maxit=20, threshold=1e-5):
         from util.full import matrix
         v = self.get_rhs(label)[0].view(matrix)
         b  = self.initial_guess(label, w).view(matrix)
         td = self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
-        maxit = 20
         for i in range(maxit):
             e2b = self.e2n(b).view(matrix)
             s2b = self.s2n(b).view(matrix)
@@ -193,10 +192,12 @@ class DaltonFactory(QuantumChemistry):
             nr = vr/t2r
             n = b*nr
             residual = self.e2n(n)-w*self.s2n(n) - v
-            print(i, -n&v,  residual.norm2())
-            if residual.norm2() < 1e-8:
+            print(i+1, -n&v,  residual.norm2())
+            if residual.norm2() < threshold:
                 break
             new_trial = (residual/td).reshape((len(v), 1))
+            if w != 0:
+                new_trial = bappend(new_trial, swap(new_trial))
             b = bappend(b, new_trial)
         return n
 
