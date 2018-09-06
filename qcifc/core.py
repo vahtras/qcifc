@@ -184,7 +184,7 @@ class DaltonFactory(QuantumChemistry):
 
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=20, threshold=1e-5):
         from util.full import matrix
-        v = self.get_rhs(*ops)[0].view(matrix)
+        rhss = [arr.view(matrix) for arr in self.get_rhs(*ops)]
         b  = self.initial_guess(ops=ops, freqs=freqs).view(matrix)
         td = [self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
             for w in freqs]
@@ -192,23 +192,25 @@ class DaltonFactory(QuantumChemistry):
             e2b = self.e2n(b).view(matrix)
             s2b = self.s2n(b).view(matrix)
             solutions=[]
-            for w in freqs:
-                n = b*((b.T*v)/(b.T*(e2b-w*s2b)))
-                solutions.append(n)
             residuals = []
-            for w, n in zip(freqs, solutions):
-                r = self.e2n(n)-w*self.s2n(n) - v
-                residuals.append(r)
-                print(i+1, w, -n&v, r.norm2())
+            for v in rhss:
+                for w in freqs:
+                    n = b*((b.T*v)/(b.T*(e2b-w*s2b)))
+                    r = self.e2n(n)-w*self.s2n(n) - v
+                    solutions.append(n)
+                    residuals.append(r)
+                    print(i+1, w, -n&v, r.norm2())
             max_residual = max(r.norm2() for r in residuals)
             if max_residual < threshold:
                 break
             new_trials = []
-            for r, t in zip(residuals, td):
-                rt = r/t
-                new_trials.append(rt)
-                if w != 0:
-                    new_trials.append(swap(rt))
+            for i, v in enumerate(rhss):
+                for j, w in enumerate(freqs):
+                    rt = r/t
+                    rt = residuals[i*len(freqs) + j]/td[j]
+                    new_trials.append(rt)
+                    if w != 0:
+                        new_trials.append(swap(rt))
             b = bappend(b, full.init(new_trials))
         return numpy.array(solutions).view(matrix)
 

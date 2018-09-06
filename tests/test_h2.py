@@ -128,43 +128,55 @@ def test_sli(qcp):
         atol=absolute_tolerance
     )
 
-@pytest.mark.parametrize('wlr',
+@pytest.mark.parametrize('args',
     [
-        ((0,), [[0.37231269, -0.37231269]]),
-        ((0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
-        ((0, 0.5), [[0.37231269, -0.37231269],
-                 [0.46541904, -0.31024805], [-0.31024805, 0.46541904]])
+        ('z', (0,), [[0.37231269, -0.37231269]]),
+        ('z', (0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
+        ('z', (0, 0.5), [[0.37231269, -0.37231269],
+                 [0.46541904, -0.31024805], [-0.31024805, 0.46541904]]),
+        ('xz', (0,), [[0, 0], [0.37231269, -0.37231269]]),
+        ('xz', (0.5,), [[0, 0], [0, 0], [0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
+        ('xz', (0, 0.5), [
+            [0, 0], [0, 0], [0, 0],
+            [0.37231269, -0.37231269],
+            [0.46541904, -0.31024805],
+            [-0.31024805, 0.46541904],
+            ]
+        )
+            
     ],
-    ids=['0', '0.5', '(0, 0.5)']
+    ids=['z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
 )
-def test_initial_guess(qcp, wlr):
+def test_initial_guess(qcp, args):
     """form paired trialvectors from rhs/orbdiag"""
-    w, lr = wlr
+    ops, w, lr = args
     npt.assert_allclose(
-        qcp.initial_guess(ops='z', freqs=w).T,
+        qcp.initial_guess(ops=ops, freqs=w).T,
         lr,
+        rtol=1e-5,
     )
 
-@pytest.mark.parametrize('wlr',
+@pytest.mark.parametrize('args',
     [
-        ((0,), [[0.82378017, -0.82378017]]),
-        ((0.5,), [[1.91230027, -0.40322064]]),
+        ('z', (0,), [[0.82378017, -0.82378017]]),
+        ('z', (0.5,), [[1.91230027, -0.40322064]]),
+        ('z', (0, 0.5), [[0.82378017, -0.82378017], [1.91230027, -0.40322064]]),
     ],
-    ids=['0', '0.5']
+    ids=['z-0', 'z-0.5', 'z-(0, 0.5)']
 )
-def test_solve(qcp, wlr):
-    w, lr = wlr
-    Nz = numpy.array(qcp.lr_solve(ops='z', freqs=w))
+def test_solve(qcp, args):
+    ops, w, lr = args
+    Nz = numpy.array(qcp.lr_solve(ops=ops, freqs=w))
     npt.assert_allclose(Nz, lr)
 
-@pytest.mark.parametrize('wlr',
+@pytest.mark.parametrize('args',
     [
-        ((0,), (-3.066295447276,)),
-        ((0.5,), (-4.309445328973108,)),
+        ('z', (0,), (-3.066295447276,)),
+        ('z', (0.5,), (-4.309445328973108,)),
     ],
     ids=['0', '0.5']
 )
-def test_lr(qcp, wlr):
-    freqs, lr = wlr
-    lrs = qcp.lr('z;z', freqs)
+def test_lr(qcp, args):
+    ops, freqs, lr = args
+    lrs = qcp.lr(f'{ops};{ops}', freqs)
     npt.assert_allclose(lrs, lr)
