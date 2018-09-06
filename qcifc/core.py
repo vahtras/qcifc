@@ -2,6 +2,7 @@
 import abc
 import os
 from util import full
+import numpy as np
 
 class QuantumChemistry(object):
     """Abstract factory"""
@@ -136,9 +137,9 @@ class DaltonFactory(QuantumChemistry):
         sd[1, :] *= -1
         return sd.flatten()
 
-    def get_rhs(self, label):
+    def get_rhs(self, *labels):
         return prop.grad(
-            self.labels[label],
+            *(self.labels[label] for label in labels),
             tmpdir=self.get_workdir()
         )
 
@@ -168,52 +169,66 @@ class DaltonFactory(QuantumChemistry):
             raise TypeError
         return u
 
-    def initial_guess(self, label, w=0):
-        V, = self.get_rhs(label)
+    def initial_guess(self, ops="xyz", freqs=(0,)):
         od = self.get_orbital_diagonal()
         sd = self.get_overlap_diagonal()
         #fix
-        td = od - w*sd
-        ig = (V/td).reshape((len(V), 1))
-        if w != 0:
-            ig = bappend(ig, swap(ig))
-        return ig
+        ig = []
+        for v in self.get_rhs(*ops):
+            for w  in freqs:
+                td = od - w*sd
+                ig.append(v/td)
+                if w != 0:
+                    ig.append(swap(v/td))
+        return numpy.array(ig).T
 
-    def lr_solve(self, label, w=0, maxit=20, threshold=1e-5):
+    def lr_solve(self, ops="xyz", freqs=(0,), maxit=20, threshold=1e-5):
         from util.full import matrix
-        v = self.get_rhs(label)[0].view(matrix)
-        b  = self.initial_guess(label, w).view(matrix)
-        td = self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
+        v = self.get_rhs(*ops)[0].view(matrix)
+        b  = self.initial_guess(ops=ops, freqs=freqs).view(matrix)
+        td = [self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
+            for w in freqs]
         for i in range(maxit):
             e2b = self.e2n(b).view(matrix)
             s2b = self.s2n(b).view(matrix)
-            t2r = b.T*(e2b-w*s2b)
-            vr = b.T*v
-            nr = vr/t2r
-            n = b*nr
-            residual = self.e2n(n)-w*self.s2n(n) - v
-            print(i+1, -n&v,  residual.norm2())
-            if residual.norm2() < threshold:
+            solutions=[]
+            for w in freqs:
+                n = b*((b.T*v)/(b.T*(e2b-w*s2b)))
+                solutions.append(n)
+            residuals = []
+            for w, n in zip(freqs, solutions):
+                r = self.e2n(n)-w*self.s2n(n) - v
+                residuals.append(r)
+                print(i+1, w, -n&v, r.norm2())
+            max_residual = max(r.norm2() for r in residuals)
+            if max_residual < threshold:
                 break
-            new_trial = (residual/td).reshape((len(v), 1))
-            if w != 0:
-                new_trial = bappend(new_trial, swap(new_trial))
-            b = bappend(b, new_trial)
-        return n
+            new_trials = []
+            for r, t in zip(residuals, td):
+                rt = r/t
+                new_trials.append(rt)
+                if w != 0:
+                    new_trials.append(swap(rt))
+            b = bappend(b, full.init(new_trials))
+        return numpy.array(solutions).view(matrix)
 
-    def lr(self, label, w=0):
+    def lr(self, label, freqs=(0,)):
         a, b = label.split(';')
-        n = self.lr_solve(b, w)
+        n = self.lr_solve(ops=b, freqs=freqs)
         v, = self.get_rhs(a)
-        return -(n&v)
+        return tuple(-(k&v) for k in n)
 
-def swap(t):
-    from util import full
-    r, c = t.shape
-    assert c == 1
-    rh = r // 2
-    new = full.init([numpy.append(t[rh:, :], t[:rh, :])])
-    return new
+def swap(xy):
+    assert len(xy.shape) <= 2, 'Not implemented for dimensions > 2'
+    yx = xy.copy()
+    half_rows = xy.shape[0]//2
+    if len(xy.shape) == 1:
+        yx[:half_rows] = xy[half_rows:]
+        yx[half_rows:] = xy[:half_rows]
+    else:
+        yx[:half_rows, :] = xy[half_rows:, :]
+        yx[half_rows:, :] = xy[:half_rows, :]
+    return yx
 
 def bappend(b1, b2):
     return numpy.append(b1, b2, axis=1).view(full.matrix)
@@ -221,12 +236,13 @@ def bappend(b1, b2):
 class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
 
-    def lr_solve(self, label, w=0):
-        V, = self.get_rhs(label)
-        row_dim = V.shape[0]
+    def lr_solve(self, ops="xyz", freqs=(0.)):
+        #import pdb; pdb.set_trace()
+        V = self.get_rhs(*ops)
+        row_dim = V[0].shape[0]
         E2 = full.init([self.e2n(i) for i in numpy.eye(row_dim)])
         S2 = full.init([self.s2n(i) for i in numpy.eye(row_dim)])
-        return V/(E2-w*S2)
+        return [v/(E2-w*S2) for w in freqs for v in V]
 
     def get_overlap_diagonal(self, filename=None):
         if filename is None:

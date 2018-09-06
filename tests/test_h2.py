@@ -6,7 +6,7 @@ import numpy.testing as npt
 
 from qcifc.core import QuantumChemistry, DaltonFactory
 
-@pytest.fixture(params=['Dalton', 'DaltonDummy'])
+@pytest.fixture(params=['DaltonDummy', 'Dalton'])
 def qcp(request):
     tmp = os.path.join(os.path.dirname(__file__), 'test_h2.d')
     factory = QuantumChemistry.set_code(
@@ -94,8 +94,10 @@ def test_get_orbhess(qcp):
 
 def test_get_rhs(qcp):
     """Get property gradient right-hand side"""
-    rhs,  = qcp.get_rhs('z',) 
-    npt.assert_allclose(rhs, [1.86111268, -1.86111268])
+    x, y, z  = qcp.get_rhs('x', 'y', 'z') 
+    npt.assert_allclose(x, [0, 0])
+    npt.assert_allclose(y, [0, 0])
+    npt.assert_allclose(z, [1.86111268, -1.86111268])
 
 @pytest.mark.parametrize('trials',
     [
@@ -127,32 +129,42 @@ def test_sli(qcp):
     )
 
 @pytest.mark.parametrize('wlr',
-    [(0, [[0.37231269, -0.37231269]]),
-     (0.5, [[ 0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]])],
-    ids=['0', '0.5']
+    [
+        ((0,), [[0.37231269, -0.37231269]]),
+        ((0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
+        ((0, 0.5), [[0.37231269, -0.37231269],
+                 [0.46541904, -0.31024805], [-0.31024805, 0.46541904]])
+    ],
+    ids=['0', '0.5', '(0, 0.5)']
 )
 def test_initial_guess(qcp, wlr):
     """form paired trialvectors from rhs/orbdiag"""
     w, lr = wlr
     npt.assert_allclose(
-        qcp.initial_guess('z', w).T,
+        qcp.initial_guess(ops='z', freqs=w).T,
         lr,
     )
 
 @pytest.mark.parametrize('wlr',
-    [(0, [0.82378017, -0.82378017]),
-     (0.5, [1.91230027, -0.40322064])],
+    [
+        ((0,), [[0.82378017, -0.82378017]]),
+        ((0.5,), [[1.91230027, -0.40322064]]),
+    ],
     ids=['0', '0.5']
 )
 def test_solve(qcp, wlr):
     w, lr = wlr
-    Nz = qcp.lr_solve('z', w)
+    Nz = numpy.array(qcp.lr_solve(ops='z', freqs=w))
     npt.assert_allclose(Nz, lr)
 
 @pytest.mark.parametrize('wlr',
-    [(0, -3.066295447276), (0.5, -4.309445328973108)],
+    [
+        ((0,), (-3.066295447276,)),
+        ((0.5,), (-4.309445328973108,)),
+    ],
     ids=['0', '0.5']
 )
 def test_lr(qcp, wlr):
-    w, lr = wlr
-    npt.assert_allclose(qcp.lr('z;z',w), lr)
+    freqs, lr = wlr
+    lrs = qcp.lr('z;z', freqs)
+    npt.assert_allclose(lrs, lr)

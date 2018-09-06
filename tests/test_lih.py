@@ -64,7 +64,7 @@ def test_get_rhs(mod, qcp):
 @pytest.mark.parametrize('wlr',
     [
         (
-            0.0, 
+            (0.0,), 
            [[1.18684846e-02, -2.36093343e-17,  2.85253416e-17,
              1.57850196e-02,  1.93784770e-18,  7.84580699e-18,
             -2.40843568e-02,  2.06714600e-02, -2.70606941e-03,
@@ -90,12 +90,14 @@ def test_initial_guess(mod, qcp, wlr):
     )
 
 @pytest.mark.parametrize('wlr',
-    [(0, (-20.869910, -20.869910, -17.754933,)),
-     (0.03, (-21.3928977, -21.3928977, -18.183962))],
+    [
+        ((0,), ((-20.869910,), (-20.869910,), (-17.754933,))),
+        ((0.03,), ((-21.3928977,), (-21.3928977,), (-18.183962,)))
+    ],
     ids=['0', '0.03']
 )
 def test_lr(mod, qcp, wlr):
-    w, (x, y, z) = wlr
-    npt.assert_allclose(qcp.lr('x;x', w), x)
-    npt.assert_allclose(qcp.lr('y;y', w), y)
-    npt.assert_allclose(qcp.lr('z;z', w), z)
+    freqs, aref = wlr
+    a = tuple(qcp.lr(f'{c};{c}', freqs) for c in 'xyz')
+    npt.assert_allclose(a, aref)
+    #assert False
