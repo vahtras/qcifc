@@ -130,14 +130,14 @@ def test_sli(qcp):
 
 @pytest.mark.parametrize('args',
     [
+        ('x', (0,), [],),
         ('z', (0,), [[0.37231269, -0.37231269]]),
         ('z', (0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
         ('z', (0, 0.5), [[0.37231269, -0.37231269],
                  [0.46541904, -0.31024805], [-0.31024805, 0.46541904]]),
-        ('xz', (0,), [[0, 0], [0.37231269, -0.37231269]]),
-        ('xz', (0.5,), [[0, 0], [0, 0], [0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
+        ('xz', (0,), [[0.37231269, -0.37231269]]),
+        ('xz', (0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
         ('xz', (0, 0.5), [
-            [0, 0], [0, 0], [0, 0],
             [0.37231269, -0.37231269],
             [0.46541904, -0.31024805],
             [-0.31024805, 0.46541904],
@@ -145,28 +145,32 @@ def test_sli(qcp):
         )
             
     ],
-    ids=['z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
+    ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
 )
 def test_initial_guess(qcp, args):
     """form paired trialvectors from rhs/orbdiag"""
     ops, w, lr = args
-    npt.assert_allclose(
-        qcp.initial_guess(ops=ops, freqs=w).T,
-        lr,
-        rtol=1e-5,
-    )
+    if lr == []:
+        assert qcp.initial_guess(ops=ops, freqs=w) == []
+    else:
+        npt.assert_allclose(
+            qcp.initial_guess(ops=ops, freqs=w).T,
+            lr,
+            rtol=1e-5,
+            )
 
 @pytest.mark.parametrize('args',
     [
+        ('x', (0,), [[0, 0]]),
         ('z', (0,), [[0.82378017, -0.82378017]]),
         ('z', (0.5,), [[1.91230027, -0.40322064]]),
         ('z', (0, 0.5), [[0.82378017, -0.82378017], [1.91230027, -0.40322064]]),
     ],
-    ids=['z-0', 'z-0.5', 'z-(0, 0.5)']
+    ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)']
 )
 def test_solve(qcp, args):
     ops, w, lr = args
-    Nz = numpy.array(qcp.lr_solve(ops=ops, freqs=w))
+    Nz = numpy.array(qcp.lr_solve(ops=ops, freqs=w)).T
     npt.assert_allclose(Nz, lr)
 
 @pytest.mark.parametrize('args',

@@ -4,6 +4,8 @@ import os
 from util import full
 import numpy as np
 
+SMALL = 1e-10
+
 class QuantumChemistry(object):
     """Abstract factory"""
     __metaclass__ = abc.ABCMeta
@@ -172,20 +174,25 @@ class DaltonFactory(QuantumChemistry):
     def initial_guess(self, ops="xyz", freqs=(0,)):
         od = self.get_orbital_diagonal()
         sd = self.get_overlap_diagonal()
-        #fix
         ig = []
         for v in self.get_rhs(*ops):
+            if v.norm2() < SMALL:
+                continue
             for w  in freqs:
                 td = od - w*sd
                 ig.append(v/td)
                 if w != 0:
                     ig.append(swap(v/td))
-        return numpy.array(ig).T
+        return numpy.array(ig).T if ig else []
 
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=20, threshold=1e-5):
         from util.full import matrix
         rhss = [arr.view(matrix) for arr in self.get_rhs(*ops)]
-        b  = self.initial_guess(ops=ops, freqs=freqs).view(matrix)
+        ig = self.initial_guess(ops=ops, freqs=freqs)
+        if ig == []:
+            r,  = rhss[0].shape
+            return matrix((r, 1))
+        b  = ig.view(matrix)
         td = [self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
             for w in freqs]
         for i in range(maxit):
@@ -194,6 +201,9 @@ class DaltonFactory(QuantumChemistry):
             solutions=[]
             residuals = []
             for v in rhss:
+                if v.norm2() < SMALL:
+                    solutions.append(np.zeros(v.shape[0], len(freqs)))
+                    continue
                 for w in freqs:
                     n = b*((b.T*v)/(b.T*(e2b-w*s2b)))
                     r = self.e2n(n)-w*self.s2n(n) - v
@@ -212,13 +222,18 @@ class DaltonFactory(QuantumChemistry):
                     if w != 0:
                         new_trials.append(swap(rt))
             b = bappend(b, full.init(new_trials))
-        return numpy.array(solutions).view(matrix)
+            print("b.shape", b.shape)
+        print(tuple(s.shape for s in solutions))
+        ret = numpy.array(solutions).T
+        print("ret.shape", ret.shape)
+        return ret.view(matrix)
 
     def lr(self, label, freqs=(0,)):
         a, b = label.split(';')
-        n = self.lr_solve(ops=b, freqs=freqs)
+        n = self.lr_solve(ops=b, freqs=freqs).view(full.matrix)
         v, = self.get_rhs(a)
-        return tuple(-(k&v) for k in n)
+        #return tuple(-(k&v) for k in n)
+        return -n&v
 
 def swap(xy):
     assert len(xy.shape) <= 2, 'Not implemented for dimensions > 2'
@@ -244,7 +259,7 @@ class DaltonFactoryDummy(DaltonFactory):
         row_dim = V[0].shape[0]
         E2 = full.init([self.e2n(i) for i in numpy.eye(row_dim)])
         S2 = full.init([self.s2n(i) for i in numpy.eye(row_dim)])
-        return [v/(E2-w*S2) for w in freqs for v in V]
+        return numpy.array([v/(E2-w*S2) for w in freqs for v in V]).T
 
     def get_overlap_diagonal(self, filename=None):
         if filename is None:
