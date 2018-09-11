@@ -78,11 +78,11 @@ def test_get_rhs(mod, qcp):
        ] 
     )
 
-@pytest.mark.parametrize('wlr',
+@pytest.mark.parametrize('args',
     [
         (
-            (0.0,),
-            [[
+            'z', (0.0,),
+            {('z', 0.0): [
                  2.17351169e-18,  2.90280578e-16, -4.13694335e-17,
                  1.02779359e-16,  9.00681388e-03, -1.24172712e-19,
                 -3.88904577e-20, -3.62175334e-18, -4.97040200e-19,
@@ -95,11 +95,11 @@ def test_get_rhs(mod, qcp):
                 -1.49176773e-17,  6.89559039e-17,  2.20100417e-17,
                 -2.38164572e-02, -7.62561269e-03, -3.21445095e-17,
                 -1.03541228e-17
-            ]]
+            ]}
         ),
         (
-            (0.5,),
-            [
+            'z', (0.5,),
+            { ('z', 0.5): 
                 [
                  2.20024508e-18,  3.47050269e-16, -5.77720802e-17,
                  1.52316173e-16,  1.39678165e-02, -1.25673969e-19,
@@ -114,58 +114,35 @@ def test_get_rhs(mod, qcp):
                 -1.92580535e-02, -6.34688454e-03, -2.61138382e-17,
                 -8.64801891e-18
                 ],
-                [
-                 -2.14742014e-18, -2.49472444e-16,  3.22211936e-17,
-                 -7.75562394e-17, -6.64624257e-03,  1.22706898e-19,
-                  3.84353386e-20,  3.19679039e-18,  4.43371191e-19,
-                 -3.82235003e-17, -1.26811547e-17,  5.63819361e-17,
-                  1.84729966e-17, -1.92580535e-02, -6.34688454e-03,
-                 -2.61138382e-17, -8.64801891e-18,  2.20024508e-18,
-                  3.47050269e-16, -5.77720802e-17,  1.52316173e-16,
-                  1.39678165e-02, -1.25673969e-19, -3.93564842e-20,
-                 -4.17702276e-18, -5.65491588e-19,  5.76690683e-17,
-                  1.81120190e-17, -8.87479495e-17, -2.72223318e-17,
-                  3.12020089e-02,  9.54960337e-03,  4.17970193e-17,
-                  1.28988397e-17
-                ]
-            ]
+            }
         ),
     ],
     ids=['0.0', '0.5']
 )
-def test_initial_guess(mod, qcp, wlr):
+def test_initial_guess(mod, qcp, args):
     """form paired trialvectors from rhs/orbdiag"""
-    w, lr = wlr
-    npt.assert_allclose(
-        qcp.initial_guess('z', w).T,
-        lr,
-    )
-
-@pytest.mark.parametrize('wlr',
-    [
-        (
-            (0,),
-            (
-                (-3.905850683643e+00,),
-                (-1.142145071013e+01,),
-                (-4.258206719769e-02)
-            )
-        ),
-        (
-            (0.5,),
-            (
-                (-5.509763897604e+00,),
-                (3.988082514830e+00,),
-                (-2.554873449850e-01,)
-            )
+    ops, freqs, expected = args
+    initial_guess = qcp.initial_guess(ops, freqs)
+    for op, freq in zip(ops, freqs):
+        npt.assert_allclose(
+            initial_guess[(op, freq)],
+            expected[(op, freq)],
+            rtol=1e-5,
         )
+
+@pytest.mark.parametrize('args',
+    [
+        ('x', 'x', (0,), {('x', 'x', 0): -3.905850683643e+00}),
+        ('y', 'y', (0,), {('y', 'y', 0): -1.142145071013e+01}),
+        ('z', 'z', (0,), {('z', 'z', 0): -4.258206719769e-02}),
+        ('x', 'x', (0.5,), {('x', 'x', 0.5): -5.509763897604e+00}),
+        ('y', 'y', (0.5,), {('y', 'y', 0.5): 3.988082514830e+00}),
+        ('z', 'z', (0.5,), {('z', 'z', 0.5): -2.554873449850e-01}),
     ],
-    ids=['0', '0.5']
+    ids=['xx0', 'yy0', 'zz0', 'xx0.5', 'yy0.5', 'zz0.5']
 )
-#@pytest.mark.skip
-def test_lr(mod, qcp, wlr):
-    w, (x, y, z) = wlr
-    rtol = 1e-5
-    npt.assert_allclose(qcp.lr('x;x', w), x, rtol=rtol)
-    npt.assert_allclose(qcp.lr('y;y', w), y, rtol=rtol)
-    npt.assert_allclose(qcp.lr('z;z', w), z, rtol=rtol)
+def test_lr(mod, qcp, args):
+    aops, bops, freqs, expected = args
+    lr = qcp.lr(aops, bops, freqs)
+    for k, v in lr.items():
+        npt.assert_allclose(v, expected[k], rtol=1e-4)

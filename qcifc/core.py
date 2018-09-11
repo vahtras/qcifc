@@ -174,66 +174,82 @@ class DaltonFactory(QuantumChemistry):
     def initial_guess(self, ops="xyz", freqs=(0,)):
         od = self.get_orbital_diagonal()
         sd = self.get_overlap_diagonal()
-        ig = []
-        for v in self.get_rhs(*ops):
-            if v.norm2() < SMALL:
-                continue
-            for w  in freqs:
-                td = od - w*sd
-                ig.append(v/td)
-                if w != 0:
-                    ig.append(swap(v/td))
-        return numpy.array(ig).T if ig else []
+        dim = od.shape[0]
+        ig = {}
+        for op, grad in zip(ops, self.get_rhs(*ops)):
+            gn = grad.norm2()
+            for w in freqs:
+                if gn < SMALL:
+                    ig[(op, w)] = numpy.zeros(dim)
+                else:
+                    td = od - w*sd
+                    ig[(op, w)] = grad/td
+        return ig
+
+    def setup_trials(self, vectors):
+        """
+        Set up initial trial vectors from a set of intial guesses
+        """
+        b = []
+        for (op, freq), v in vectors.items():
+            if numpy.linalg.norm(v) > SMALL:
+                b.append(v)
+                if freq > SMALL:
+                    b.append(swap(v))
+        return full.init(b)
+                
+            
+
 
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=20, threshold=1e-5):
         from util.full import matrix
-        rhss = [arr.view(matrix) for arr in self.get_rhs(*ops)]
-        ig = self.initial_guess(ops=ops, freqs=freqs)
-        if ig == []:
-            r,  = rhss[0].shape
-            return matrix((r, 1))
-        b  = ig.view(matrix)
-        td = [self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
-            for w in freqs]
+
+        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
+        igs = self.initial_guess(ops=ops, freqs=freqs)
+        b = self.setup_trials(igs)
+        # if the set of trial vectors is null we return the initial guess
+        if not numpy.any(b):
+            return igs
+
+        td = {
+            w: self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
+            for w in freqs
+        }
+
+        solutions = {}
+        residuals = {}
         for i in range(maxit):
             e2b = self.e2n(b).view(matrix)
             s2b = self.s2n(b).view(matrix)
-            solutions=[]
-            residuals = []
-            for v in rhss:
-                if v.norm2() < SMALL:
-                    solutions.append(np.zeros(v.shape[0], len(freqs)))
-                    continue
-                for w in freqs:
-                    n = b*((b.T*v)/(b.T*(e2b-w*s2b)))
-                    r = self.e2n(n)-w*self.s2n(n) - v
-                    solutions.append(n)
-                    residuals.append(r)
-                    print(i+1, w, -n&v, r.norm2())
-            max_residual = max(r.norm2() for r in residuals)
+            for op, freq in igs:
+                v = V1[op]
+                n = b*((b.T*v)/(b.T*(e2b-freq*s2b)))
+                r = self.e2n(n)-freq*self.s2n(n) - v
+                solutions[(op, freq)] = n
+                residuals[(op, freq)] = r
+                print(i+1, op, freq, -n&v, r.norm2())
+            max_residual = max(r.norm2() for r in residuals.values())
             if max_residual < threshold:
                 break
             new_trials = []
-            for i, v in enumerate(rhss):
-                for j, w in enumerate(freqs):
-                    rt = r/t
-                    rt = residuals[i*len(freqs) + j]/td[j]
-                    new_trials.append(rt)
-                    if w != 0:
-                        new_trials.append(swap(rt))
+            for (op, freq), r in residuals.items():
+                rt = r/td[freq]
+                new_trials.append(rt)
+                if freq != 0:
+                    new_trials.append(swap(rt))
             b = bappend(b, full.init(new_trials))
-            print("b.shape", b.shape)
-        print(tuple(s.shape for s in solutions))
-        ret = numpy.array(solutions).T
-        print("ret.shape", ret.shape)
-        return ret.view(matrix)
+        return solutions
 
-    def lr(self, label, freqs=(0,)):
-        a, b = label.split(';')
-        n = self.lr_solve(ops=b, freqs=freqs).view(full.matrix)
-        v, = self.get_rhs(a)
+    def lr(self, aops, bops, freqs=(0,)):
+        n = self.lr_solve(ops=bops, freqs=freqs)
+        v = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
         #return tuple(-(k&v) for k in n)
-        return -n&v
+        solutions = self.lr_solve(bops, freqs)
+        lrs = {}
+        for aop in aops:
+            for bop, w in solutions:
+                lrs[(aop, bop, w)] = -v[aop]&solutions[(bop, w)]
+        return lrs
 
 def swap(xy):
     assert len(xy.shape) <= 2, 'Not implemented for dimensions > 2'
@@ -254,12 +270,14 @@ class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
 
     def lr_solve(self, ops="xyz", freqs=(0.)):
-        #import pdb; pdb.set_trace()
-        V = self.get_rhs(*ops)
-        row_dim = V[0].shape[0]
+        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
+        row_dim = V1[ops[0]].shape[0]
         E2 = full.init([self.e2n(i) for i in numpy.eye(row_dim)])
         S2 = full.init([self.s2n(i) for i in numpy.eye(row_dim)])
-        return numpy.array([v/(E2-w*S2) for w in freqs for v in V]).T
+        solutions = {
+            (op, freq): (V1[op]/(E2-freq*S2)) for freq in freqs for op in ops
+        }
+        return solutions
 
     def get_overlap_diagonal(self, filename=None):
         if filename is None:

@@ -3,6 +3,7 @@ import pytest
 import os
 import numpy
 import numpy.testing as npt
+from util.full import matrix
 
 from qcifc.core import QuantumChemistry, DaltonFactory
 
@@ -98,6 +99,8 @@ def test_get_rhs(qcp):
     npt.assert_allclose(x, [0, 0])
     npt.assert_allclose(y, [0, 0])
     npt.assert_allclose(z, [1.86111268, -1.86111268])
+    npt.assert_allclose((x, y, z), ([0, 0], [0, 0], [1.86111268, -1.86111268]))
+    
 
 @pytest.mark.parametrize('trials',
     [
@@ -130,18 +133,30 @@ def test_sli(qcp):
 
 @pytest.mark.parametrize('args',
     [
-        ('x', (0,), [],),
-        ('z', (0,), [[0.37231269, -0.37231269]]),
-        ('z', (0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
-        ('z', (0, 0.5), [[0.37231269, -0.37231269],
-                 [0.46541904, -0.31024805], [-0.31024805, 0.46541904]]),
-        ('xz', (0,), [[0.37231269, -0.37231269]]),
-        ('xz', (0.5,), [[0.46541904, -0.31024805], [-0.31024805, 0.46541904, ]]),
-        ('xz', (0, 0.5), [
-            [0.37231269, -0.37231269],
-            [0.46541904, -0.31024805],
-            [-0.31024805, 0.46541904],
-            ]
+        ('x', (0,), {('x', 0): [0, 0]},),
+        ('z', (0,), {('z', 0): [0.37231269, -0.37231269]}),
+        ('z', (0.5,), {('z', 0.5): [0.46541904, -0.31024805]}),
+        ('z', (0, 0.5), {
+            ('z', 0): [0.37231269, -0.37231269],
+            ('z', 0.5): [0.46541904, -0.31024805]
+            }
+        ),
+        ('xz', (0,), {
+            ('x', 0): [0.0, 0.0],
+            ('z', 0): [0.37231269, -0.37231269],
+            }
+        ),
+        ('xz', (0.5,), {
+            ('x', 0.5): [0., 0.],
+            ('z', 0.5): [-0.31024805, 0.46541904]
+            }
+        ),
+        ('xz', (0, 0.5), {
+            ('x', 0): [0., 0.],
+            ('x', 0.5): [0., 0.],
+            ('z', 0): [0.37231269, -0.37231269],
+            ('z', 0.5): [0.46541904, -0.31024805],
+            }
         )
             
     ],
@@ -149,38 +164,118 @@ def test_sli(qcp):
 )
 def test_initial_guess(qcp, args):
     """form paired trialvectors from rhs/orbdiag"""
-    ops, w, lr = args
-    if lr == []:
-        assert qcp.initial_guess(ops=ops, freqs=w) == []
-    else:
+    ops, freqs, expected = args
+    initial_guess  = qcp.initial_guess(ops=ops, freqs=freqs)
+    for op, freq in zip(ops, freqs):
         npt.assert_allclose(
-            qcp.initial_guess(ops=ops, freqs=w).T,
-            lr,
+            initial_guess[(op, freq)],
+            expected[(op, freq)],
             rtol=1e-5,
             )
 
 @pytest.mark.parametrize('args',
     [
-        ('x', (0,), [[0, 0]]),
-        ('z', (0,), [[0.82378017, -0.82378017]]),
-        ('z', (0.5,), [[1.91230027, -0.40322064]]),
-        ('z', (0, 0.5), [[0.82378017, -0.82378017], [1.91230027, -0.40322064]]),
+        (
+            {('x', 0): [0, 0]},
+            []
+        ),
+        (
+            {('z', 0): [0.37231269, -0.37231269]},
+            [[0.37231269, -0.37231269]]
+        ),
+        (
+            {('z', 0.5): [0.46541904, -0.31024805]},
+            [[0.46541904, -0.31024805], [-0.31024805, 0.46541904]]
+        ),
+        (
+            {
+            ('z', 0): [0.37231269, -0.37231269],
+            ('z', 0.5): [0.46541904, -0.31024805]
+            },
+            [
+                [0.37231269, -0.37231269],
+                [0.46541904, -0.31024805],
+                [-0.31024805, 0.46541904],
+            ]
+        ),
+        (
+            {
+            ('x', 0): [0.0, 0.0],
+            ('z', 0): [0.37231269, -0.37231269],
+            },
+            [
+                [0.37231269, -0.37231269],
+            ]
+        ),
+        (
+            {
+            ('x', 0.5): [0., 0.],
+            ('z', 0.5): [-0.31024805, 0.46541904]
+            },
+            [
+                [-0.31024805, 0.46541904],
+                [0.46541904, -0.31024805],
+            ]
+        ),
+        (
+            {
+            ('x', 0): [0., 0.],
+            ('x', 0.5): [0., 0.],
+            ('z', 0): [0.37231269, -0.37231269],
+            ('z', 0.5): [0.46541904, -0.31024805],
+            },
+            [
+                [0.37231269, -0.37231269],
+                [0.46541904, -0.31024805],
+                [-0.31024805, 0.46541904],
+            ]
+        )
+            
+    ],
+    ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
+)
+def test_setup_trials(qcp, args):
+    """
+    Form paired trialvectors from initial guesses (rhs/diagonal)
+    Parameterized input lists are reformatted to arrays.
+    """
+    initial_guesses, expected = args
+    ig = {key: numpy.array(vector)
+        for key, vector in initial_guesses.items()}
+    b = qcp.setup_trials(ig)
+    npt.assert_allclose(b.T, expected, rtol=1e-5)
+
+@pytest.mark.parametrize('args',
+    [
+        ('x', (0,), {('x', 0): [0, 0]}),
+        ('z', (0,), {('z', 0): [0.82378017, -0.82378017]}),
+        ('z', (0.5,), {('z', 0.5): [1.91230027, -0.40322064]}),
+        ('z', (0, 0.5), {
+            ('z', 0): [0.82378017, -0.82378017],
+            ('z', 0.5): [1.91230027, -0.40322064]
+            }
+        ),
     ],
     ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)']
 )
 def test_solve(qcp, args):
-    ops, w, lr = args
-    Nz = numpy.array(qcp.lr_solve(ops=ops, freqs=w)).T
-    npt.assert_allclose(Nz, lr)
+    ops, freqs, expected = args
+    solutions = qcp.lr_solve(ops=ops, freqs=freqs)
+    for op, freq in solutions:
+        npt.assert_allclose(
+            solutions[(op, freq)], 
+            expected[(op, freq)]
+        )
 
 @pytest.mark.parametrize('args',
     [
-        ('z', (0,), (-3.066295447276,)),
-        ('z', (0.5,), (-4.309445328973108,)),
+        ('z', 'z', (0,), {('z', 'z', 0): -3.066295447276}),
+        ('z', 'z', (0.5,), {('z', 'z', 0.5): -4.309445328973108}),
     ],
     ids=['0', '0.5']
 )
 def test_lr(qcp, args):
-    ops, freqs, lr = args
-    lrs = qcp.lr(f'{ops};{ops}', freqs)
-    npt.assert_allclose(lrs, lr)
+    aops, bops, freqs, expected = args
+    lr = qcp.lr(aops, bops, freqs)
+    for k, v in lr.items():
+        npt.assert_allclose(v, expected[k])

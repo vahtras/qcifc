@@ -61,11 +61,12 @@ def test_get_rhs(mod, qcp):
          3.49956863e-02, -2.07700781e+00, -3.44560225e-01] 
     )
 
-@pytest.mark.parametrize('wlr',
+@pytest.mark.parametrize('args',
     [
         (
-            (0.0,), 
-           [[1.18684846e-02, -2.36093343e-17,  2.85253416e-17,
+           'z', (0.0,), 
+           {('z', 0.0): 
+            [1.18684846e-02, -2.36093343e-17,  2.85253416e-17,
              1.57850196e-02,  1.93784770e-18,  7.84580699e-18,
             -2.40843568e-02,  2.06714600e-02, -2.70606941e-03,
             -1.00688388e+00,  1.37892944e-15, -1.70971849e-15,
@@ -76,28 +77,56 @@ def test_get_rhs(mod, qcp):
              2.40843568e-02, -2.06714600e-02,  2.70606941e-03,
              1.00688388e+00, -1.37892944e-15,  1.70971849e-15,
              6.26067085e-03,  6.08030627e-17,  3.03925913e-16,
-             1.58766612e-02, -7.61964293e-01, -5.33591643e-02]]
+             1.58766612e-02, -7.61964293e-01, -5.33591643e-02]}
         ),
     ],
     ids=['0.0']
 )
-def test_initial_guess(mod, qcp, wlr):
+def test_initial_guess(mod, qcp, args):
     """form paired trialvectors from rhs/orbdiag"""
-    w, lr = wlr
-    npt.assert_allclose(
-        qcp.initial_guess('z', w).T,
-        lr,
-    )
+    ops, freqs, expected = args
+    initial_guess = qcp.initial_guess(ops, freqs)
+    for op, freq in zip(ops, freqs):
+        npt.assert_allclose(
+            initial_guess[(op, freq)],
+            expected[(op, freq)],
+        )
 
-@pytest.mark.parametrize('wlr',
+@pytest.mark.parametrize('args',
     [
-        ((0,), ((-20.869910,), (-20.869910,), (-17.754933,))),
-        ((0.03,), ((-21.3928977,), (-21.3928977,), (-18.183962,)))
+        (
+            'xyz', 'xyz', (0,),
+            {
+                ('x', 'x', 0): -20.869910,
+                ('x', 'y', 0): 0,
+                ('x', 'z', 0): 0,
+                ('y', 'x', 0): 0,
+                ('y', 'y', 0): -20.869910,
+                ('y', 'z', 0): 0,
+                ('z', 'x', 0): 0,
+                ('z', 'y', 0): 0,
+                ('z', 'z', 0): -17.754933,
+            }
+        ),
+        (
+            'xyz', 'xyz', (0.03,),
+            {
+                ('x', 'x', 0.03): -21.3928977, 
+                ('x', 'y', 0.03): 0,
+                ('x', 'z', 0.03): 0,
+                ('y', 'x', 0.03): 0,
+                ('y', 'y', 0.03): -21.3928977, 
+                ('y', 'z', 0.03): 0,
+                ('z', 'x', 0.03): 0,
+                ('z', 'y', 0.03): 0,
+                ('z', 'z', 0.03): -18.183962,
+            }
+        ),
     ],
     ids=['0', '0.03']
 )
-def test_lr(mod, qcp, wlr):
-    freqs, aref = wlr
-    a = tuple(qcp.lr(f'{c};{c}', freqs) for c in 'xyz')
-    npt.assert_allclose(a, aref)
-    #assert False
+def test_lr(mod, qcp, args):
+    aops, bops, freqs, expected = args
+    lr = qcp.lr(aops, bops, freqs)
+    for k, v in lr.items():
+        npt.assert_allclose(v, expected[k], atol=1e-8)
