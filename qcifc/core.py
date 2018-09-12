@@ -208,18 +208,6 @@ class DaltonFactory(QuantumChemistry):
         return new_trials
                 
     def generate_new_trials(self, residuals, td, b):
-        new_trials = []
-        for (op, freq), r in residuals.items():
-            rt = r/td[freq]
-            new_trials.append(rt)
-            if freq != 0.:
-                new_trials.append(swap(rt))
-        new_trials =  full.init(new_trials)
-        # project out old trials
-        new_trials = new_trials - b*b.T*new_trials
-        # renormalize new trials
-        new_trials = new_trials*(new_trials.T*new_trials).invsqrt()
-        #return new_trials
         return self.setup_trials(vectors=residuals, td=td, b=b, renormalize=True)
             
 
