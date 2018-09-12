@@ -186,18 +186,41 @@ class DaltonFactory(QuantumChemistry):
                     ig[(op, w)] = grad/td
         return ig
 
-    def setup_trials(self, vectors):
+    def setup_trials(self, vectors, td=None, b=None, renormalize=True):
         """
         Set up initial trial vectors from a set of intial guesses
         """
-        b = []
-        for (op, freq), v in vectors.items():
+        trials = []
+        for (op, freq), vec in vectors.items():
+            if td is not None:
+                v = vec/td[freq]
+            else:
+                v = vec
             if numpy.linalg.norm(v) > SMALL:
-                b.append(v)
+                trials.append(v)
                 if freq > SMALL:
-                    b.append(swap(v))
-        return full.init(b)
+                    trials.append(swap(v))
+        new_trials = full.init(trials)
+        if b is not None:
+            new_trials = new_trials - b*b.T*new_trials
+        if trials and renormalize:
+            new_trials = new_trials*(new_trials.T*new_trials).invsqrt()
+        return new_trials
                 
+    def generate_new_trials(self, residuals, td, b):
+        new_trials = []
+        for (op, freq), r in residuals.items():
+            rt = r/td[freq]
+            new_trials.append(rt)
+            if freq != 0.:
+                new_trials.append(swap(rt))
+        new_trials =  full.init(new_trials)
+        # project out old trials
+        new_trials = new_trials - b*b.T*new_trials
+        # renormalize new trials
+        new_trials = new_trials*(new_trials.T*new_trials).invsqrt()
+        #return new_trials
+        return self.setup_trials(vectors=residuals, td=td, b=b, renormalize=True)
             
 
 
@@ -262,13 +285,14 @@ def swap(xy):
         yx[half_rows:, :] = xy[:half_rows, :]
     return yx
 
+
 def bappend(b1, b2):
     return numpy.append(b1, b2, axis=1).view(full.matrix)
 
 class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
 
-    def lr_solve(self, ops="xyz", freqs=(0.)):
+    def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         row_dim = V1[ops[0]].shape[0]
         E2 = full.init([self.e2n(i) for i in numpy.eye(row_dim)])
@@ -303,3 +327,5 @@ class DaltonFactoryDummy(DaltonFactory):
             ]
         ).diagonal()
         return e2_diagonal
+
+

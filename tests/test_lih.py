@@ -1,7 +1,9 @@
 import pytest
 import os
 import subprocess
+import numpy as np
 import numpy.testing as npt
+from util import full
 
 from qcifc.core import QuantumChemistry, DaltonFactory
 
@@ -130,3 +132,19 @@ def test_lr(mod, qcp, args):
     lr = qcp.lr(aops, bops, freqs)
     for k, v in lr.items():
         npt.assert_allclose(v, expected[k], atol=1e-8)
+
+
+
+def test_new_trials1(mod, qcp):
+    td = {0.5: np.array([2.5, 1.5,  1.5, 0.5])}
+    residuals = {('op', 0.5): full.init([1, 1, 0, 0])}
+    b = full.init([[1, 0, 0, 0], [0, 0, 1, 0]])
+    new_trials = qcp.generate_new_trials(residuals, td, b)
+
+
+    npt.assert_allclose(new_trials.T, 
+        [
+            [0., 1, 0., 0.],
+            [0., 0., 0., 1],
+        ]
+    )

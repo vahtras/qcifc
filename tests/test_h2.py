@@ -242,7 +242,7 @@ def test_setup_trials(qcp, args):
     initial_guesses, expected = args
     ig = {key: numpy.array(vector)
         for key, vector in initial_guesses.items()}
-    b = qcp.setup_trials(ig)
+    b = qcp.setup_trials(ig, renormalize=False)
     npt.assert_allclose(b.T, expected, rtol=1e-5)
 
 @pytest.mark.parametrize('args',
