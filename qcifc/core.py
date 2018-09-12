@@ -204,8 +204,12 @@ class DaltonFactory(QuantumChemistry):
         if b is not None:
             new_trials = new_trials - b*b.T*new_trials
         if trials and renormalize:
-            new_trials = new_trials*(new_trials.T*new_trials).invsqrt()
+            t = get_transform(new_trials)
+            truncated = new_trials*t
+            S12 = (truncated.T*truncated).invsqrt()
+            new_trials = truncated*S12
         return new_trials
+
                 
     def generate_new_trials(self, residuals, td, b):
         return self.setup_trials(vectors=residuals, td=td, b=b, renormalize=True)
@@ -311,4 +315,8 @@ class DaltonFactoryDummy(DaltonFactory):
         ).diagonal()
         return e2_diagonal
 
+def get_transform(basis, threshold=1e-10):
+    l, T = (basis.T*basis).eigvec()
+    mask = l > threshold
+    return T[:, mask]
 
