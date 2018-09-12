@@ -227,7 +227,7 @@ class DaltonFactory(QuantumChemistry):
                 r = self.e2n(n)-freq*self.s2n(n) - v
                 solutions[(op, freq)] = n
                 residuals[(op, freq)] = r
-                print(f"{i+1} <<{op};{op}>>({freq})={-n&v:.6f} rn={r.norm2():.1e}", end='')
+                print(f"{i+1} <<{op};{op}>>({freq})={-n&v:.6f} rn={r.norm2():.2e} ", end='')
             print()
             max_residual = max(r.norm2() for r in residuals.values())
             if max_residual < threshold:
@@ -241,9 +241,9 @@ class DaltonFactory(QuantumChemistry):
             b = bappend(b, full.init(new_trials))
         return solutions
 
-    def lr(self, aops, bops, freqs=(0,)):
+    def lr(self, aops, bops, freqs=(0,), threshold=1e-3):
         v1 = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
-        solutions = self.lr_solve(bops, freqs)
+        solutions = self.lr_solve(bops, freqs, threshold=threshold)
         lrs = {}
         for aop in aops:
             for bop, w in solutions:
