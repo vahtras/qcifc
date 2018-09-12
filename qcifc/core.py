@@ -255,13 +255,8 @@ class DaltonFactory(QuantumChemistry):
             max_residual = max(r.norm2() for r in residuals.values())
             if max_residual < threshold:
                 break
-            new_trials = []
-            for (op, freq), r in residuals.items():
-                rt = r/td[freq]
-                new_trials.append(rt)
-                if freq != 0:
-                    new_trials.append(swap(rt))
-            b = bappend(b, full.init(new_trials))
+            new_trials = self.setup_trials(residuals, td=td, b=b)
+            b= bappend(b, new_trials)
         return solutions
 
     def lr(self, aops, bops, freqs=(0,), threshold=1e-3):
