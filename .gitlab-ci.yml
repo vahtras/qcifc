@@ -1,5 +1,6 @@
 before_script: 
-    - apt install virtualenv
+    - apt update -qy
+    - apt install -y virtualenv python3-dev python3-pip
     - virtualenv venv3 -p python3
     - source venv3/bin/activate
     - pip install -r requirements.txt
