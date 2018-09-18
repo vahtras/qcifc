@@ -246,6 +246,7 @@ class DaltonFactory(QuantumChemistry):
             print()
             max_residual = max(r.norm2() for r in residuals.values())
             if max_residual < threshold:
+                print("Converged")
                 break
             new_trials = self.setup_trials(residuals, td=td, b=b)
             b= bappend(b, new_trials)
