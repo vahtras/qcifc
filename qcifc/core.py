@@ -225,6 +225,8 @@ class DaltonFactory(QuantumChemistry):
         # if the set of trial vectors is null we return the initial guess
         if not numpy.any(b):
             return igs
+        e2b = self.e2n(b).view(matrix)
+        s2b = self.s2n(b).view(matrix)
 
         td = {
             w: self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
@@ -234,8 +236,6 @@ class DaltonFactory(QuantumChemistry):
         solutions = {}
         residuals = {}
         for i in range(maxit):
-            e2b = self.e2n(b).view(matrix)
-            s2b = self.s2n(b).view(matrix)
             for op, freq in igs:
                 v = V1[op]
                 n = b*((b.T*v)/(b.T*(e2b-freq*s2b)))
@@ -249,7 +249,11 @@ class DaltonFactory(QuantumChemistry):
                 print("Converged")
                 break
             new_trials = self.setup_trials(residuals, td=td, b=b)
-            b= bappend(b, new_trials)
+            b = bappend(b, new_trials)
+            new_e2b = self.e2n(new_trials).view(matrix)
+            new_s2b = self.s2n(new_trials).view(matrix)
+            e2b = bappend(e2b, new_e2b)
+            s2b = bappend(s2b, new_s2b)
         return solutions
 
     def lr(self, aops, bops, freqs=(0,), threshold=1e-3):
