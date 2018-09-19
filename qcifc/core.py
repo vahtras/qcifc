@@ -228,10 +228,9 @@ class DaltonFactory(QuantumChemistry):
         e2b = self.e2n(b).view(matrix)
         s2b = self.s2n(b).view(matrix)
 
-        td = {
-            w: self.get_orbital_diagonal() - w*self.get_overlap_diagonal()
-            for w in freqs
-        }
+        od = self.get_orbital_diagonal() 
+        sd = self.get_overlap_diagonal()
+        td = {w: od - w*sd for w in freqs}
 
         solutions = {}
         residuals = {}
