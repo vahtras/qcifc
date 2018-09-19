@@ -216,7 +216,7 @@ class DaltonFactory(QuantumChemistry):
             
 
 
-    def lr_solve(self, ops="xyz", freqs=(0,), maxit=20, threshold=1e-5):
+    def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
         from util.full import matrix
 
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
@@ -256,9 +256,9 @@ class DaltonFactory(QuantumChemistry):
             s2b = bappend(s2b, new_s2b)
         return solutions
 
-    def lr(self, aops, bops, freqs=(0,), threshold=1e-3):
+    def lr(self, aops, bops, freqs=(0,), **kwargs):
         v1 = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
-        solutions = self.lr_solve(bops, freqs, threshold=threshold)
+        solutions = self.lr_solve(bops, freqs, **kwargs)
         lrs = {}
         for aop in aops:
             for bop, w in solutions:
@@ -321,7 +321,9 @@ class DaltonFactoryDummy(DaltonFactory):
         return e2_diagonal
 
 def get_transform(basis, threshold=1e-10):
-    l, T = (basis.T*basis).eigvec()
-    mask = l > threshold
+    Sb = basis.T*basis
+    l, T = Sb.eigvec()
+    b_norm = np.sqrt(Sb.diagonal())
+    mask = l > threshold*b_norm
     return T[:, mask]
 
