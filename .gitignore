@@ -11,3 +11,4 @@ errors.err
 *.out
 *.gz
 *.[0-9]
+*.prof
