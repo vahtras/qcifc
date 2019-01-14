@@ -263,9 +263,10 @@ def test_solve(qcp, args):
     solutions = qcp.lr_solve(ops=ops, freqs=freqs)
     for op, freq in solutions:
         npt.assert_allclose(
-            solutions[(op, freq)], 
+            solutions[(op, freq)],
             expected[(op, freq)]
         )
+
 
 @pytest.mark.parametrize('args',
     [
@@ -279,3 +280,32 @@ def test_lr(qcp, args):
     lr = qcp.lr(aops, bops, freqs)
     for k, v in lr.items():
         npt.assert_allclose(v, expected[k])
+
+@pytest.mark.parametrize('args',
+    [
+        ('z', 1, {('z', 0): 1.1946797}),
+    ],
+    ids=['z1', ]
+)
+def test_pp(qcp, args):
+    if 'pp' not in dir(qcp):
+        pytest.skip('not implemented')
+
+    aops, nfreqs, expected = args
+    pp = qcp.pp(aops, nfreqs)
+    for k, v in pp.items():
+        npt.assert_allclose(v, expected[k])
+
+def test_excitation_energies(qcp):
+    if 'excitation_energies' not in dir(qcp):
+        pytest.skip('not implemented')
+
+    w = qcp.excitation_energies(1)
+    assert w == pytest.approx(0.93093411)
+
+def test_eigenvectors(qcp):
+    if 'eigenvectors' not in dir(qcp):
+        pytest.skip('not implemented')
+
+    X = qcp.eigenvectors(1)
+    npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])

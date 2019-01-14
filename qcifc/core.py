@@ -23,18 +23,17 @@ class QuantumChemistry(object):
     @abc.abstractmethod
     def get_overlap(self):#pragma: no cover
         """Abstract overlap getter"""
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_one_el_hamiltonian(self):#pragma: no cover
         """Abstract h1 getter"""
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_nuclear_repulsion(self):#pragma: no cover
         """Abstract Z getter"""
-        pass
-
+        raise NotImplementedError
 
 
 import numpy
@@ -224,7 +223,7 @@ class DaltonFactory(QuantumChemistry):
         b = self.setup_trials(igs)
         # if the set of trial vectors is null we return the initial guess
         if not numpy.any(b):
-            return igs
+            return {k: v.view(matrix) for k, v in igs.items()}
         e2b = self.e2n(b).view(matrix)
         s2b = self.s2n(b).view(matrix)
 
@@ -264,6 +263,12 @@ class DaltonFactory(QuantumChemistry):
                 lrs[(aop, bop, w)] = -v1[aop]&solutions[(bop, w)]
         return lrs
 
+    #def pp(args, **kwargs):
+    #    pass
+
+    #def excitation_energies(*args, **kwargs):
+        #pass
+
 def swap(xy):
     assert len(xy.shape) <= 2, 'Not implemented for dimensions > 2'
     yx = xy.copy()
@@ -280,6 +285,7 @@ def swap(xy):
 def bappend(b1, b2):
     return numpy.append(b1, b2, axis=1).view(full.matrix)
 
+
 class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
 
@@ -290,6 +296,16 @@ class DaltonFactoryDummy(DaltonFactory):
         S2 = full.init([self.s2n(i) for i in numpy.eye(row_dim)])
         solutions = {
             (op, freq): (V1[op]/(E2-freq*S2)) for freq in freqs for op in ops
+        }
+        return solutions
+
+    def pp(self, ops="xyz", nfreqs=1, **kwargs):
+        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
+        E2, S2 = self._get_E2S2()
+        Xn = self.eigenvectors(nfreqs)
+        dim = len(E2)
+        solutions = {
+            (op, i): (Xn[:, i]&V1[op]) for i in range(nfreqs) for op in ops
         }
         return solutions
 
@@ -318,6 +334,28 @@ class DaltonFactoryDummy(DaltonFactory):
             ]
         ).diagonal()
         return e2_diagonal
+
+    def _get_E2S2(self):
+        filename = os.path.join(self.get_workdir(), "SIRIFC")
+        ifc = sirifc.SirIfc(filename)
+        dim = 2*ifc.nwopt
+        E2 = full.init([self.e2n(i) for i in numpy.eye(dim)])
+        S2 = full.init([self.s2n(i) for i in numpy.eye(dim)])
+        return E2, S2
+
+    def excitation_energies(self, n_states):
+        E2, S2 = self._get_E2S2()
+        wn = (E2/S2).eig()
+        return wn[len(wn)//2: len(wn)//2 + n_states]
+
+    def eigenvectors(self, n_states):
+        E2, S2 = self._get_E2S2()
+        _, Xn = (E2/S2).eigvec()
+        dim = len(E2)
+        for i in range(dim//2, dim//2 + n_states):
+            norm = np.sqrt(Xn[:, i].T*S2*Xn[:, i])
+            Xn[:, i] /= norm
+        return Xn[:, dim//2: dim//2 + n_states]
 
 def get_transform(basis, threshold=1e-10):
     Sb = basis.T*basis
