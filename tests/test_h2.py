@@ -1,11 +1,10 @@
-import unittest
 import pytest
 import os
 import numpy
 import numpy.testing as npt
-from util.full import matrix
 
 from qcifc.core import QuantumChemistry, DaltonFactory
+
 
 @pytest.fixture(params=['DaltonDummy', 'Dalton'])
 def qcp(request):
@@ -16,24 +15,29 @@ def qcp(request):
             )
     return factory
 
+
 def test_create_dalton_factory(qcp):
     """Create 'concrete' factory'"""
     assert isinstance(qcp, DaltonFactory)
+
 
 def test_unknown_raises_typeerror(qcp):
     """Unknown code raises TypeError"""
     with pytest.raises(TypeError):
         QuantumChemistry.set_code('Gamess')
 
+
 def test_get_wrkdir(qcp):
     """Get factory workdir"""
     assert qcp.get_workdir() ==  \
         os.path.join(os.path.dirname(__file__), 'test_h2.d')
 
+
 def test_set_wrkdir(qcp):
     """Get factory workdir"""
     qcp.set_workdir('/tmp/123')
     assert qcp.get_workdir() == '/tmp/123'
+
 
 def test_get_overlap(qcp):
     """Get overlap"""
@@ -42,6 +46,7 @@ def test_get_overlap(qcp):
         [[1.0, 0.65987313], [0.65987313, 1.0]]
         )
 
+
 def test_get_h1(qcp):
     """Get one-electron Hamiltonian"""
     npt.assert_allclose(
@@ -49,19 +54,26 @@ def test_get_h1(qcp):
         [[-1.12095946, -0.95937577], [-0.95937577, -1.12095946]]
         )
 
+
 def test_get_z(qcp):
     """Nuclear repulsion energy"""
     assert qcp.get_nuclear_repulsion() == pytest.approx(0.7151043)
 
+
 def test_get_mo(qcp):
     """Read MO coefficients"""
     cmo = qcp.get_mo()
-    npt.assert_allclose(cmo, [[.54884227, -1.212451936],
-        [.54884227, 1.21245193]])
+    npt.assert_allclose(
+        cmo,
+        [[.54884227, -1.212451936],
+         [.54884227, 1.21245193]]
+    )
+
 
 def test_set_get_dens_a(qcp):
     """Set density test"""
-    da = [[1, 0], [0, 1]]; db = [[1, 0], [0, 0]]
+    da = [[1, 0], [0, 1]]
+    db = [[1, 0], [0, 0]]
     qcp.set_densities(da, db)
     npt.assert_allclose(
         qcp.get_densities()[0], da
@@ -70,37 +82,40 @@ def test_set_get_dens_a(qcp):
         qcp.get_densities()[1], db
     )
 
+
 def test_get_two_fa(qcp):
     """Get alpha Fock matrix"""
     da = numpy.array([[1, 0], [0, 1]])
     db = numpy.array([[1, 0], [0, 0]])
     faref = numpy.array([
-        [1.04701025 , 0.44459112],
+        [1.04701025, 0.44459112],
         [0.44459112, 0.8423992]
-        ])
+    ])
 
     fbref = numpy.array([
         [1.34460081, 0.88918225],
         [0.88918225, 1.61700513]
-        ])
+    ])
     qcp.set_densities(da, db)
     fa, fb = qcp.get_two_el_fock()
     npt.assert_allclose(fa, faref)
     npt.assert_allclose(fb, fbref)
 
+
 def test_get_orbhess(qcp):
     """Get diagonal orbital hessian"""
-    od = qcp.get_orbital_diagonal() 
+    od = qcp.get_orbital_diagonal()
     npt.assert_allclose(od, [4.99878931, 4.99878931])
+
 
 def test_get_rhs(qcp):
     """Get property gradient right-hand side"""
-    x, y, z  = qcp.get_rhs('x', 'y', 'z') 
+    x, y, z = qcp.get_rhs('x', 'y', 'z')
     npt.assert_allclose(x, [0, 0])
     npt.assert_allclose(y, [0, 0])
     npt.assert_allclose(z, [1.86111268, -1.86111268])
     npt.assert_allclose((x, y, z), ([0, 0], [0, 0], [1.86111268, -1.86111268]))
-    
+
 
 @pytest.mark.parametrize('trials',
     [
@@ -116,6 +131,7 @@ def test_oli(qcp, trials):
     """Linear transformation E2*N"""
     n, e2n = trials
     numpy.testing.assert_allclose(qcp.e2n(n), e2n)
+
 
 def test_sli(qcp):
     """Linear transformation E2*N"""
@@ -172,6 +188,7 @@ def test_initial_guess(qcp, args):
             expected[(op, freq)],
             rtol=1e-5,
             )
+
 
 @pytest.mark.parametrize('args',
     [
@@ -240,10 +257,13 @@ def test_setup_trials(qcp, args):
     Parameterized input lists are reformatted to arrays.
     """
     initial_guesses, expected = args
-    ig = {key: numpy.array(vector)
-        for key, vector in initial_guesses.items()}
+    ig = {
+        key: numpy.array(vector)
+        for key, vector in initial_guesses.items()
+    }
     b = qcp.setup_trials(ig, renormalize=False)
     npt.assert_allclose(b.T, expected, rtol=1e-5)
+
 
 @pytest.mark.parametrize('args',
     [
@@ -281,6 +301,7 @@ def test_lr(qcp, args):
     for k, v in lr.items():
         npt.assert_allclose(v, expected[k])
 
+
 @pytest.mark.parametrize('args',
     [
         ('z', 1, {('z', 0): 1.1946797}),
@@ -296,6 +317,7 @@ def test_pp(qcp, args):
     for k, v in pp.items():
         npt.assert_allclose(v, expected[k])
 
+
 def test_excitation_energies(qcp):
     if 'excitation_energies' not in dir(qcp):
         pytest.skip('not implemented')
@@ -303,9 +325,13 @@ def test_excitation_energies(qcp):
     w = qcp.excitation_energies(1)
     assert w == pytest.approx(0.93093411)
 
+
 def test_eigenvectors(qcp):
     if 'eigenvectors' not in dir(qcp):
         pytest.skip('not implemented')
-
     X = qcp.eigenvectors(1)
     npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
+
+
+def test_dim(qcp):
+    assert qcp.response_dim() == 2

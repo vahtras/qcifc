@@ -6,7 +6,8 @@ import numpy as np
 
 SMALL = 1e-10
 
-class QuantumChemistry(object):
+
+class QuantumChemistry:
     """Abstract factory"""
     __metaclass__ = abc.ABCMeta
 
@@ -21,17 +22,17 @@ class QuantumChemistry(object):
             raise TypeError("QM %s not implemented" % code)
 
     @abc.abstractmethod
-    def get_overlap(self):#pragma: no cover
+    def get_overlap(self):  # pragma: no cover
         """Abstract overlap getter"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_one_el_hamiltonian(self):#pragma: no cover
+    def get_one_el_hamiltonian(self):  # pragma: no cover
         """Abstract h1 getter"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_nuclear_repulsion(self):#pragma: no cover
+    def get_nuclear_repulsion(self):  # pragma: no cover
         """Abstract Z getter"""
         raise NotImplementedError
 
@@ -121,16 +122,17 @@ class DaltonFactory(QuantumChemistry):
             filename=filename
             )
 
-    def get_orbital_diagonal(self, filename=None):
+    def _sirifc(self, filename=None):
         if filename is None:
             filename = os.path.join(self.get_workdir(), "SIRIFC")
-        od = sirifc.SirIfc(filename).orbdiag
+        return sirifc.SirIfc(filename)
+
+    def get_orbital_diagonal(self, filename=None):
+        od = self._sirifc(filename).orbdiag
         return numpy.append(od, od)
 
     def get_overlap_diagonal(self, filename=None):
-        if filename is None:
-            filename = os.path.join(self.get_workdir(), "SIRIFC")
-        ifc = sirifc.SirIfc(filename)
+        ifc = self._sirifc(filename)
         lsd = ifc.nwopt
         sd = numpy.ones((2, lsd))
         for i in (0, 1):
@@ -209,11 +211,10 @@ class DaltonFactory(QuantumChemistry):
             new_trials = truncated*S12
         return new_trials
 
-                
     def generate_new_trials(self, residuals, td, b):
-        return self.setup_trials(vectors=residuals, td=td, b=b, renormalize=True)
-            
-
+        return self.setup_trials(
+            vectors=residuals, td=td, b=b, renormalize=True
+        )
 
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
         from util.full import matrix
@@ -227,7 +228,7 @@ class DaltonFactory(QuantumChemistry):
         e2b = self.e2n(b).view(matrix)
         s2b = self.s2n(b).view(matrix)
 
-        od = self.get_orbital_diagonal() 
+        od = self.get_orbital_diagonal()
         sd = self.get_overlap_diagonal()
         td = {w: od - w*sd for w in freqs}
 
@@ -263,6 +264,11 @@ class DaltonFactory(QuantumChemistry):
                 lrs[(aop, bop, w)] = -v1[aop]&solutions[(bop, w)]
         return lrs
 
+    def response_dim(self):
+        filename = os.path.join(self.get_workdir(), "SIRIFC")
+        ifc = sirifc.SirIfc(filename)
+        return 2*ifc.nwopt
+
     #def pp(args, **kwargs):
     #    pass
 
@@ -291,9 +297,7 @@ class DaltonFactoryDummy(DaltonFactory):
 
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        row_dim = V1[ops[0]].shape[0]
-        E2 = full.init([self.e2n(i) for i in numpy.eye(row_dim)])
-        S2 = full.init([self.s2n(i) for i in numpy.eye(row_dim)])
+        E2, S2 = self._get_E2S2()
         solutions = {
             (op, freq): (V1[op]/(E2-freq*S2)) for freq in freqs for op in ops
         }
@@ -305,19 +309,17 @@ class DaltonFactoryDummy(DaltonFactory):
         Xn = self.eigenvectors(nfreqs)
         dim = len(E2)
         solutions = {
-            (op, i): (Xn[:, i]&V1[op]) for i in range(nfreqs) for op in ops
+            (op, i): (Xn[:, i] & V1[op]) for i in range(nfreqs) for op in ops
         }
         return solutions
 
     def get_overlap_diagonal(self, filename=None):
-        if filename is None:
-            filename = os.path.join(self.get_workdir(), "SIRIFC")
-        ifc = sirifc.SirIfc(filename)
-        n = 2*ifc.nwopt
+        ifc = self._sirifc(filename)
+        n = self.response_dim()
         sd = numpy.array(
             [
                 oli.s2n(c, tmpdir=self.get_workdir())
-                    for c in numpy.eye(n)
+                for c in numpy.eye(n)
             ]
         ).diagonal()
         return sd
@@ -330,7 +332,7 @@ class DaltonFactoryDummy(DaltonFactory):
         e2_diagonal = numpy.array(
             [
                 oli.e2n(c, tmpdir=self.get_workdir())
-                    for c in numpy.eye(n)
+                for c in numpy.eye(n)
             ]
         ).diagonal()
         return e2_diagonal
@@ -356,6 +358,8 @@ class DaltonFactoryDummy(DaltonFactory):
             norm = np.sqrt(Xn[:, i].T*S2*Xn[:, i])
             Xn[:, i] /= norm
         return Xn[:, dim//2: dim//2 + n_states]
+
+
 
 def get_transform(basis, threshold=1e-10):
     Sb = basis.T*basis
