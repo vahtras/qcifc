@@ -1,4 +1,4 @@
-"""Abstrace interfact to QM codes"""
+"""Abstract interfact to QM codes"""
 import abc
 import os
 from util import full
@@ -307,14 +307,12 @@ class DaltonFactoryDummy(DaltonFactory):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         E2, S2 = self._get_E2S2()
         Xn = self.eigenvectors(nfreqs)
-        dim = len(E2)
         solutions = {
             (op, i): (Xn[:, i] & V1[op]) for i in range(nfreqs) for op in ops
         }
         return solutions
 
     def get_overlap_diagonal(self, filename=None):
-        ifc = self._sirifc(filename)
         n = self.response_dim()
         sd = numpy.array(
             [
@@ -360,11 +358,9 @@ class DaltonFactoryDummy(DaltonFactory):
         return Xn[:, dim//2: dim//2 + n_states]
 
 
-
 def get_transform(basis, threshold=1e-10):
     Sb = basis.T*basis
     l, T = Sb.eigvec()
     b_norm = np.sqrt(Sb.diagonal())
     mask = l > threshold*b_norm
     return T[:, mask]
-
