@@ -7,9 +7,8 @@ import numpy as np
 SMALL = 1e-10
 
 
-class QuantumChemistry:
+class QuantumChemistry(abc.ABC):
     """Abstract factory"""
-    __metaclass__ = abc.ABCMeta
 
     @staticmethod
     def set_code(code, **kwargs):
@@ -24,17 +23,14 @@ class QuantumChemistry:
     @abc.abstractmethod
     def get_overlap(self):  # pragma: no cover
         """Abstract overlap getter"""
-        raise NotImplementedError
 
     @abc.abstractmethod
     def get_one_el_hamiltonian(self):  # pragma: no cover
         """Abstract h1 getter"""
-        raise NotImplementedError
 
     @abc.abstractmethod
     def get_nuclear_repulsion(self):  # pragma: no cover
         """Abstract Z getter"""
-        raise NotImplementedError
 
 
 import numpy
@@ -60,7 +56,6 @@ class DaltonFactory(QuantumChemistry):
     def set_workdir(self, tmpdir):
         """Set work directory"""
         self._tmpdir = tmpdir
-
 
     def get_overlap(self):
         return one.read(
@@ -149,8 +144,8 @@ class DaltonFactory(QuantumChemistry):
     def e2n(self, trial):
         b = numpy.array(trial)
         u = numpy.ndarray(b.shape)
-        if len(b.shape)== 1:
-            u = oli.e2n(b, tmpdir=self.get_workdir())#.reshape(b.shape)
+        if len(b.shape) == 1:
+            u = oli.e2n(b, tmpdir=self.get_workdir())  # .reshape(b.shape)
         elif len(b.shape) == 2:
             rows, columns = b.shape
             for c in range(columns):
@@ -162,7 +157,7 @@ class DaltonFactory(QuantumChemistry):
     def s2n(self, trial):
         b = numpy.array(trial)
         u = numpy.ndarray(b.shape)
-        if len(b.shape)== 1:
+        if len(b.shape) == 1:
             u = oli.s2n(b, tmpdir=self.get_workdir())
         elif len(b.shape) == 2:
             rows, columns = b.shape
