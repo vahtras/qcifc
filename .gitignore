@@ -12,3 +12,6 @@ errors.err
 *.gz
 *.[0-9]
 *.prof
+.flake8
+.idea
+.pytest_cache

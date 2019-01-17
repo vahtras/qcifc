@@ -1,34 +1,12 @@
 import pytest
-import os
-import subprocess
 import numpy as np
 import numpy.testing as npt
 from util import full
-from qcifc.core import QuantumChemistry
+from .conftest import case_dir, case_fixture
 
-
-@pytest.fixture(params=['DaltonDummy', 'Dalton'])
-def qcp(request):
-    tmp = os.path.join(os.path.dirname(__file__), 'test_lih.d')
-    factory = QuantumChemistry.set_code(
-            request.param,
-            tmpdir=tmp,
-            )
-    return factory
-
-
-@pytest.fixture(scope='module')
-def mod():
-    tmpdir = os.path.join(os.path.dirname(__file__), 'test_lih.d')
-    os.chdir(tmpdir)
-    subprocess.call(
-        ['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'rsp_polar', 'lih']
-    )
-    subprocess.call(['tar', 'xvfz', 'rsp_polar_lih.tar.gz'])
-    yield
-    subprocess.call(
-        'rm *.[0-9] DALTON.* *AO* *SIR* *RSP* molden.inp', shell=True
-    )
+CASE = 'lih'
+tmpdir = case_dir(CASE)
+mod = case_fixture(CASE)
 
 
 def test_get_orbhess(mod, qcp):

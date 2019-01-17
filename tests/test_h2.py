@@ -2,29 +2,11 @@ import pytest
 import os
 import numpy
 import numpy.testing as npt
+from .conftest import case_dir, case_fixture
 
-from qcifc.core import QuantumChemistry, DaltonFactory
-
-
-@pytest.fixture(params=['DaltonDummy', 'Dalton'])
-def qcp(request):
-    tmp = os.path.join(os.path.dirname(__file__), 'test_h2.d')
-    factory = QuantumChemistry.set_code(
-            request.param,
-            tmpdir=tmp,
-            )
-    return factory
-
-
-def test_create_dalton_factory(qcp):
-    """Create 'concrete' factory'"""
-    assert isinstance(qcp, DaltonFactory)
-
-
-def test_unknown_raises_typeerror(qcp):
-    """Unknown code raises TypeError"""
-    with pytest.raises(TypeError):
-        QuantumChemistry.set_code('Gamess')
+CASE = 'h2'
+tmpdir = case_dir(CASE)
+mod = case_fixture(CASE)
 
 
 def test_get_wrkdir(qcp):
