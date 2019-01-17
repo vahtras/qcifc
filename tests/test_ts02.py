@@ -38,9 +38,7 @@ def test_get_s2_diagonal(mod, qcp):
 def test_get_rhs(mod, qcp):
     """Get property gradient right-hand side"""
     rhs,  = qcp.get_rhs('z',)
-    npt.assert_allclose(
-       rhs,
-       [
+    expected = [
          +8.94435483e-17,  8.87286414e-16, -7.28540423e-17,
          +1.58013378e-16,  1.26794454e-02, -1.03948048e-17,
          -3.28434472e-18, -2.72446954e-17, -4.10615567e-18,
@@ -53,8 +51,8 @@ def test_get_rhs(mod, qcp):
          -8.45837058e-17,  3.09199726e-16,  1.14952287e-16,
          -1.00618252e-01, -3.78492357e-02, -6.95956129e-17,
          -2.62418517e-17
-       ]
-    )
+    ]
+    npt.assert_allclose(rhs, expected, atol=1e-8)
 
 
 @pytest.mark.parametrize(
@@ -108,7 +106,7 @@ def test_initial_guess(mod, qcp, args):
         npt.assert_allclose(
             initial_guess[(op, freq)],
             expected[(op, freq)],
-            rtol=1e-5,
+            atol=1e-5,
         )
 
 
