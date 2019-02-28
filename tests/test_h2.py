@@ -1,97 +1,123 @@
+import pathlib
+
 import pytest
-import os
 import numpy
 import numpy.testing as npt
-from .conftest import case_dir, case_fixture
+
+from . import codes
 
 CASE = 'h2'
-tmpdir = case_dir(CASE)
-mod = case_fixture(CASE)
+test_root = pathlib.Path(__file__).parent
+test_dir = test_root/f'test_{CASE}.d'
+settings = dict(
+    xyz=test_dir/f'{CASE}.xyz',
+    inp=test_dir/f'{CASE}.inp',
+    out=test_dir/f'{CASE}.out',
+    basis=test_dir/'STO-3G',
+    _tmpdir=test_dir,
+)
 
 
-def test_get_wrkdir(qcp):
-    """Get factory workdir"""
-    assert qcp.get_workdir() ==  \
-        os.path.join(os.path.dirname(__file__), 'test_h2.d')
+#
+# code fixture takes params from  codes, avaliable in request.param
+# purpose to inject parameters into the fixture
+#
+@pytest.mark.parametrize('code', codes, indirect=True)
+class TestH2:
 
+    def test_get_wrkdir(self, code):
+        """Get factory workdir"""
+        code.set_workdir(test_dir)
+        assert code.get_workdir() == test_dir
 
-def test_set_wrkdir(qcp):
-    """Get factory workdir"""
-    qcp.set_workdir('/tmp/123')
-    assert qcp.get_workdir() == '/tmp/123'
+    def test_set_wrkdir(self, code):
+        """Get factory workdir"""
+        code.set_workdir('/tmp/123')
+        assert code.get_workdir() == '/tmp/123'
 
-
-def test_get_overlap(qcp):
-    """Get overlap"""
-    npt.assert_allclose(
-        qcp.get_overlap(),
-        [[1.0, 0.65987313], [0.65987313, 1.0]]
+    def test_get_overlap(self, code):
+        """Get overlap"""
+        code.setup(**settings)
+        npt.assert_allclose(
+            code.get_overlap(),
+            [[1.0, 0.65987313], [0.65987313, 1.0]]
         )
 
+    def test_get_h1(self, code):
+        """Get one-electron Hamiltonian"""
+        code.setup(**settings)
+        npt.assert_allclose(
+            code.get_one_el_hamiltonian(),
+            [[-1.12095946, -0.95937577], [-0.95937577, -1.12095946]]
+            )
 
-def test_get_h1(qcp):
-    """Get one-electron Hamiltonian"""
-    npt.assert_allclose(
-        qcp.get_one_el_hamiltonian(),
-        [[-1.12095946, -0.95937577], [-0.95937577, -1.12095946]]
-        )
+    def test_get_z(self, code):
+        """Nuclear repulsion energy"""
+        code.setup(**settings)
+        assert code.get_nuclear_repulsion() == pytest.approx(0.7151043)
 
+    def test_get_mo(self, code):
+        """Read MO coefficients"""
+        code.setup(**settings)
+        code.run_scf()
+        cmo = code.get_mo()
+        expected = [
+             [.54884227, -1.212451936],
+             [.54884227, 1.21245193]
+        ]
+        try:
+            npt.assert_allclose(cmo, expected)
+        except AssertionError:
+            npt.assert_allclose(-cmo, expected)
 
-def test_get_z(qcp):
-    """Nuclear repulsion energy"""
-    assert qcp.get_nuclear_repulsion() == pytest.approx(0.7151043)
+    def test_set_get_dens_a(self, code):
+        """Set density test"""
+        code.setup(**settings)
+        code.run_scf()
+        da = [[1., 0.], [0., 1.]]
+        db = [[1., 0.], [0., 0.]]
+        code.set_densities(da, db)
+        da1, db1 = code.get_densities()
+        npt.assert_allclose(da1, da)
+        npt.assert_allclose(db1, db)
 
+    def test_get_two_fa(self, code):
+        """Get alpha Fock matrix"""
+        code.setup(**settings)
+        code.run_scf()
 
-def test_get_mo(qcp):
-    """Read MO coefficients"""
-    cmo = qcp.get_mo()
-    npt.assert_allclose(
-        cmo,
-        [[.54884227, -1.212451936],
-         [.54884227, 1.21245193]]
-    )
+        da = numpy.array([[1., 0.], [0., 1.]])
+        db = numpy.array([[1., 0.], [0., 0.]])
+        faref = numpy.array([
+            [1.04701025, 0.44459112],
+            [0.44459112, 0.8423992]
+        ])
 
-
-def test_set_get_dens_a(qcp):
-    """Set density test"""
-    da = [[1, 0], [0, 1]]
-    db = [[1, 0], [0, 0]]
-    qcp.set_densities(da, db)
-    npt.assert_allclose(
-        qcp.get_densities()[0], da
-    )
-    npt.assert_allclose(
-        qcp.get_densities()[1], db
-    )
-
-
-def test_get_two_fa(qcp):
-    """Get alpha Fock matrix"""
-    da = numpy.array([[1, 0], [0, 1]])
-    db = numpy.array([[1, 0], [0, 0]])
-    faref = numpy.array([
-        [1.04701025, 0.44459112],
-        [0.44459112, 0.8423992]
-    ])
-
-    fbref = numpy.array([
-        [1.34460081, 0.88918225],
-        [0.88918225, 1.61700513]
-    ])
-    qcp.set_densities(da, db)
-    fa, fb = qcp.get_two_el_fock()
-    npt.assert_allclose(fa, faref)
-    npt.assert_allclose(fb, fbref)
+        fbref = numpy.array([
+            [1.34460081, 0.88918225],
+            [0.88918225, 1.61700513]
+        ])
+        code.set_densities(da, db)
+        fa, fb = code.get_two_el_fock()
+        npt.assert_allclose(fa, faref)
+        npt.assert_allclose(fb, fbref)
 
 
 def test_get_orbhess(qcp):
     """Get diagonal orbital hessian"""
+    if 'get_orbital_diagonal' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
     od = qcp.get_orbital_diagonal()
     npt.assert_allclose(od, [4.99878931, 4.99878931])
 
 
 def test_get_rhs(qcp):
     """Get property gradient right-hand side"""
+    if 'get_rhs' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
+    
     x, y, z = qcp.get_rhs('x', 'y', 'z')
     npt.assert_allclose(x, [0, 0])
     npt.assert_allclose(y, [0, 0])
@@ -111,6 +137,9 @@ def test_get_rhs(qcp):
     ]
 )
 def test_oli(qcp, trials):
+    if 'e2n' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
     """Linear transformation E2*N"""
     n, e2n = trials
     numpy.testing.assert_allclose(qcp.e2n(n), e2n)
@@ -118,6 +147,9 @@ def test_oli(qcp, trials):
 
 def test_sli(qcp):
     """Linear transformation E2*N"""
+    if 's2n' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
     absolute_tolerance = 1e-10
     s2n = qcp.s2n([1, 0])
     npt.assert_allclose(
@@ -172,6 +204,9 @@ def test_sli(qcp):
 )
 def test_initial_guess(qcp, args):
     """form paired trialvectors from rhs/orbdiag"""
+    if 'initial_guess' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
     ops, freqs, expected = args
     initial_guess = qcp.initial_guess(ops=ops, freqs=freqs)
     for op, freq in zip(ops, freqs):
@@ -248,6 +283,10 @@ def test_setup_trials(qcp, args):
     Form paired trialvectors from initial guesses (rhs/diagonal)
     Parameterized input lists are reformatted to arrays.
     """
+    if 'setup_trials' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
+
     initial_guesses, expected = args
     ig = {
         key: numpy.array(vector)
@@ -274,6 +313,10 @@ def test_setup_trials(qcp, args):
     ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)']
 )
 def test_solve(qcp, args):
+    if 'lr_solve' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
+
     ops, freqs, expected = args
     solutions = qcp.lr_solve(ops=ops, freqs=freqs)
     for op, freq in solutions:
@@ -292,6 +335,10 @@ def test_solve(qcp, args):
     ids=['0', '0.5']
 )
 def test_lr(qcp, args):
+    if 'lr' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
+
     aops, bops, freqs, expected = args
     lr = qcp.lr(aops, bops, freqs)
     for k, v in lr.items():
@@ -308,6 +355,7 @@ def test_lr(qcp, args):
 def test_pp(qcp, args):
     if 'pp' not in dir(qcp):
         pytest.skip('not implemented')
+    qcp.setup(**settings)
 
     aops, nfreqs, expected = args
     pp = qcp.pp(aops, nfreqs)
@@ -318,6 +366,7 @@ def test_pp(qcp, args):
 def test_excitation_energies(qcp):
     if 'excitation_energies' not in dir(qcp):
         pytest.skip('not implemented')
+    qcp.setup(**settings)
 
     w = qcp.excitation_energies(1)
     assert w == pytest.approx(0.93093411)
@@ -326,9 +375,15 @@ def test_excitation_energies(qcp):
 def test_eigenvectors(qcp):
     if 'eigenvectors' not in dir(qcp):
         pytest.skip('not implemented')
+    qcp.setup(**settings)
+
     X = qcp.eigenvectors(1)
     npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
 
 
 def test_dim(qcp):
+    if 'response_dim' not in dir(qcp):
+        pytest.skip('not implemented')
+    qcp.setup(**settings)
+
     assert qcp.response_dim() == 2

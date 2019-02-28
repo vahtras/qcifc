@@ -12,6 +12,10 @@ class QuantumChemistry(abc.ABC):
     def __init__(self, code, **kwargs):
         self.tmpdir = kwargs.get('tmpdir', '/tmp')
 
+    def setup(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
     @abc.abstractmethod
     def get_overlap(self):  # pragma: no cover
         """Abstract overlap getter"""
@@ -23,6 +27,17 @@ class QuantumChemistry(abc.ABC):
     @abc.abstractmethod
     def get_nuclear_repulsion(self):  # pragma: no cover
         """Abstract Z getter"""
+
+    def run_scf(self):
+        pass
+
+    def set_densities(self, *das):
+        """Set densities"""
+        self._da, self._db = das
+
+    def get_densities(self):
+        """Get densities"""
+        return self._da, self._db
 
 
 def swap(xy):

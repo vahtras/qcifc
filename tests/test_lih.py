@@ -1,13 +1,21 @@
+import pathlib
 import pytest
 import numpy as np
 import numpy.testing as npt
 from util import full
-from .conftest import case_dir, case_fixture
 
 CASE = 'lih'
-tmpdir = case_dir(CASE)
-mod = case_fixture(CASE)
+test_root = pathlib.Path(__file__).parent
+test_dir = test_root/f'test_{CASE}.d'
+settings = dict(
+    xyz=test_dir/f'{CASE}.xyz',
+    inp=test_dir/f'{CASE}.inp',
+    out=test_dir/f'{CASE}.out',
+    basis=test_dir/'STO-3G',
+    _tmpdir=test_dir,
+)
 
+from .conftest import mod
 
 def test_get_orbhess(mod, qcp):
     """Get diagonal orbital hessian"""

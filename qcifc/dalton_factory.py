@@ -54,14 +54,6 @@ class DaltonFactory(QuantumChemistry):
             )
         return rst.cmo.unblock()
 
-    def set_densities(self, *das):
-        """Set densities"""
-        self._da, self._db = das
-
-    def get_densities(self):
-        """Get densities"""
-        return self._da, self._db
-
     def get_two_el_fock(self):
         """Get focks"""
         return two.core.fockab(
