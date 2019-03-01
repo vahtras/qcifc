@@ -3,12 +3,15 @@ import subprocess
 import pytest
 from . import codes
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def code(request):
     coder, settings = request.param
     code = coder()
     code.setup(**settings)
-    return code
+    code.run_scf()
+    yield code
+    code.cleanup_scf()
+
 
 def _case_dir(case):
     @pytest.fixture(scope='module')

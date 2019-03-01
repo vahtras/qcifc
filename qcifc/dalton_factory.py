@@ -1,4 +1,6 @@
 import os
+import subprocess
+
 import numpy
 
 from daltools import one, sirrst, sirifc, prop
@@ -232,6 +234,19 @@ class DaltonFactory(QuantumChemistry):
 
     #def excitation_energies(*args, **kwargs):
         #pass
+
+    def run_scf(self):
+        os.chdir(self.get_workdir())
+        subprocess.call(
+            ['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', self.case]
+        )
+        subprocess.call(['tar', 'xvfz', f'hf_{self.case}.tar.gz'])
+
+    def cleanup_scf(self):
+        subprocess.call(
+            'rm *.[0-9] DALTON.* *AO* *SIR* *RSP* molden.inp', shell=True
+        )
+
 
 
 class DaltonFactoryDummy(DaltonFactory):

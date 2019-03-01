@@ -31,6 +31,9 @@ class QuantumChemistry(abc.ABC):
     def run_scf(self):
         pass
 
+    def cleanup_scf(self):
+        pass
+
     def set_densities(self, *das):
         """Set densities"""
         self._da, self._db = das

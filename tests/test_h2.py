@@ -6,6 +6,7 @@ import numpy
 import numpy.testing as npt
 
 from . import codes
+from . import TestQC
 
 CASE = 'h2'
 test_root = pathlib.Path(__file__).parent
@@ -23,9 +24,12 @@ settings = [dict(
 # code fixture takes params from  codes, avaliable in request.param
 # purpose to inject parameters into the fixture
 #
-codes_settings = list(itertools.product(codes, settings))
-@pytest.mark.parametrize('code', codes_settings, indirect=True)
-class TestH2:
+codes_settings = list(itertools.product(codes.values(), settings))
+ids = list(codes.keys())
+
+
+@pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
+class TestH2(TestQC):
 
     def test_get_wrkdir(self, code):
         """Get factory workdir"""
@@ -99,15 +103,13 @@ class TestH2:
 
     def test_get_orbhess(self, code):
         """Get diagonal orbital hessian"""
-        if 'get_orbital_diagonal' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('get_orbital_diagonal', code)
         od = code.get_orbital_diagonal()
         npt.assert_allclose(od, [4.99878931, 4.99878931])
 
     def test_get_rhs(self, code):
         """Get property gradient right-hand side"""
-        if 'get_rhs' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('get_rhs', code)
 
         x, y, z = code.get_rhs('x', 'y', 'z')
         npt.assert_allclose(x, [0, 0])
@@ -127,14 +129,14 @@ class TestH2:
         ]
     )
     def test_oli(self, code, trials):
-        if 'e2n' not in dir(code):
-            pytest.skip('not implemented')
         """Linear transformation E2*N"""
+        self.skip_if_not_implemented('e2n', code)
         n, e2n = trials
         numpy.testing.assert_allclose(code.e2n(n), e2n)
 
     def test_sli(self, code):
-        """Linear transformation E2*N"""
+        """Linear transformation S2*N"""
+        self.skip_if_not_implemented('s2n', code)
         if 's2n' not in dir(code):
             pytest.skip('not implemented')
         absolute_tolerance = 1e-10
@@ -148,7 +150,6 @@ class TestH2:
             s2n, [0.00000000, -2.00000000],
             atol=absolute_tolerance
         )
-
 
     @pytest.mark.parametrize(
         'args',
@@ -191,8 +192,8 @@ class TestH2:
     )
     def test_initial_guess(self, code, args):
         """form paired trialvectors from rhs/orbdiag"""
-        if 'initial_guess' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('initial_guess', code)
+
         ops, freqs, expected = args
         initial_guess = code.initial_guess(ops=ops, freqs=freqs)
         for op, freq in zip(ops, freqs):
@@ -269,8 +270,7 @@ class TestH2:
         Form paired trialvectors from initial guesses (rhs/diagonal)
         Parameterized input lists are reformatted to arrays.
         """
-        if 'setup_trials' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('setup_trials', code)
 
         initial_guesses, expected = args
         ig = {
@@ -298,8 +298,7 @@ class TestH2:
         ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)']
     )
     def test_solve(self, code, args):
-        if 'lr_solve' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('lr_solve', code)
 
         ops, freqs, expected = args
         solutions = code.lr_solve(ops=ops, freqs=freqs)
@@ -319,8 +318,7 @@ class TestH2:
         ids=['0', '0.5']
     )
     def test_lr(self, code, args):
-        if 'lr' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('lr', code)
 
         aops, bops, freqs, expected = args
         lr = code.lr(aops, bops, freqs)
@@ -335,8 +333,7 @@ class TestH2:
         ids=['z1', ]
     )
     def test_pp(self, code, args):
-        if 'pp' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('pp', code)
 
         aops, nfreqs, expected = args
         pp = code.pp(aops, nfreqs)
@@ -344,20 +341,19 @@ class TestH2:
             npt.assert_allclose(v, expected[k])
 
     def test_excitation_energies(self, code):
-        if 'excitation_energies' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('excitation_energies', code)
 
         w = code.excitation_energies(1)
         assert w == pytest.approx(0.93093411)
 
     def test_eigenvectors(self, code):
-        if 'eigenvectors' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('eigenvectors', code)
 
         X = code.eigenvectors(1)
         npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
 
     def test_dim(self, code):
+        self.skip_if_not_implemented('response_dim', code)
         if 'response_dim' not in dir(code):
             pytest.skip('not implemented')
 
