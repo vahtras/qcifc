@@ -3,7 +3,8 @@ import subprocess
 import pytest
 from . import codes
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope='function')
 def code(request):
     coder, settings = request.param
     code = coder()

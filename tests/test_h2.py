@@ -12,10 +12,11 @@ CASE = 'h2'
 test_root = pathlib.Path(__file__).parent
 test_dir = test_root/f'test_{CASE}.d'
 settings = [dict(
+    case=CASE,
     xyz=test_dir/f'{CASE}.xyz',
     inp=test_dir/f'{CASE}.inp',
     out=test_dir/f'{CASE}.out',
-    basis=test_dir/'STO-3G',
+    basis=test_root/'bases'/'STO-3G',
     _tmpdir=test_dir,
 )]
 
