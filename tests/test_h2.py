@@ -1,4 +1,5 @@
 import pathlib
+import itertools
 
 import pytest
 import numpy
@@ -9,25 +10,25 @@ from . import codes
 CASE = 'h2'
 test_root = pathlib.Path(__file__).parent
 test_dir = test_root/f'test_{CASE}.d'
-settings = dict(
+settings = [dict(
     xyz=test_dir/f'{CASE}.xyz',
     inp=test_dir/f'{CASE}.inp',
     out=test_dir/f'{CASE}.out',
     basis=test_dir/'STO-3G',
     _tmpdir=test_dir,
-)
+)]
 
 
 #
 # code fixture takes params from  codes, avaliable in request.param
 # purpose to inject parameters into the fixture
 #
-@pytest.mark.parametrize('code', codes, indirect=True)
+codes_settings = list(itertools.product(codes, settings))
+@pytest.mark.parametrize('code', codes_settings, indirect=True)
 class TestH2:
 
     def test_get_wrkdir(self, code):
         """Get factory workdir"""
-        code.set_workdir(test_dir)
         assert code.get_workdir() == test_dir
 
     def test_set_wrkdir(self, code):
@@ -37,7 +38,6 @@ class TestH2:
 
     def test_get_overlap(self, code):
         """Get overlap"""
-        code.setup(**settings)
         npt.assert_allclose(
             code.get_overlap(),
             [[1.0, 0.65987313], [0.65987313, 1.0]]
@@ -45,7 +45,6 @@ class TestH2:
 
     def test_get_h1(self, code):
         """Get one-electron Hamiltonian"""
-        code.setup(**settings)
         npt.assert_allclose(
             code.get_one_el_hamiltonian(),
             [[-1.12095946, -0.95937577], [-0.95937577, -1.12095946]]
@@ -53,12 +52,10 @@ class TestH2:
 
     def test_get_z(self, code):
         """Nuclear repulsion energy"""
-        code.setup(**settings)
         assert code.get_nuclear_repulsion() == pytest.approx(0.7151043)
 
     def test_get_mo(self, code):
         """Read MO coefficients"""
-        code.setup(**settings)
         code.run_scf()
         cmo = code.get_mo()
         expected = [
@@ -72,7 +69,6 @@ class TestH2:
 
     def test_set_get_dens_a(self, code):
         """Set density test"""
-        code.setup(**settings)
         code.run_scf()
         da = [[1., 0.], [0., 1.]]
         db = [[1., 0.], [0., 0.]]
@@ -83,7 +79,6 @@ class TestH2:
 
     def test_get_two_fa(self, code):
         """Get alpha Fock matrix"""
-        code.setup(**settings)
         code.run_scf()
 
         da = numpy.array([[1., 0.], [0., 1.]])
@@ -102,288 +97,268 @@ class TestH2:
         npt.assert_allclose(fa, faref)
         npt.assert_allclose(fb, fbref)
 
+    def test_get_orbhess(self, code):
+        """Get diagonal orbital hessian"""
+        if 'get_orbital_diagonal' not in dir(code):
+            pytest.skip('not implemented')
+        od = code.get_orbital_diagonal()
+        npt.assert_allclose(od, [4.99878931, 4.99878931])
 
-def test_get_orbhess(qcp):
-    """Get diagonal orbital hessian"""
-    if 'get_orbital_diagonal' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-    od = qcp.get_orbital_diagonal()
-    npt.assert_allclose(od, [4.99878931, 4.99878931])
+    def test_get_rhs(self, code):
+        """Get property gradient right-hand side"""
+        if 'get_rhs' not in dir(code):
+            pytest.skip('not implemented')
 
+        x, y, z = code.get_rhs('x', 'y', 'z')
+        npt.assert_allclose(x, [0, 0])
+        npt.assert_allclose(y, [0, 0])
+        npt.assert_allclose(z, [1.86111268, -1.86111268])
+        npt.assert_allclose((x, y, z), ([0, 0], [0, 0], [1.86111268, -1.86111268]))
 
-def test_get_rhs(qcp):
-    """Get property gradient right-hand side"""
-    if 'get_rhs' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-    
-    x, y, z = qcp.get_rhs('x', 'y', 'z')
-    npt.assert_allclose(x, [0, 0])
-    npt.assert_allclose(y, [0, 0])
-    npt.assert_allclose(z, [1.86111268, -1.86111268])
-    npt.assert_allclose((x, y, z), ([0, 0], [0, 0], [1.86111268, -1.86111268]))
-
-
-@pytest.mark.parametrize(
-    'trials',
-    [
-        ([1, 0], [1.89681370, -0.36242092]),
-        ([0, 1], [-0.36242092, 1.89681370]),
-        ([[1, 0],
-          [0, 1]],
-         [[1.89681370, -0.36242092],
-          [-0.36242092, 1.89681370]]),
-    ]
-)
-def test_oli(qcp, trials):
-    if 'e2n' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-    """Linear transformation E2*N"""
-    n, e2n = trials
-    numpy.testing.assert_allclose(qcp.e2n(n), e2n)
-
-
-def test_sli(qcp):
-    """Linear transformation E2*N"""
-    if 's2n' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-    absolute_tolerance = 1e-10
-    s2n = qcp.s2n([1, 0])
-    npt.assert_allclose(
-        s2n, [2.00000000,  0.00000000],
-        atol=absolute_tolerance
+    @pytest.mark.parametrize(
+        'trials',
+        [
+            ([1, 0], [1.89681370, -0.36242092]),
+            ([0, 1], [-0.36242092, 1.89681370]),
+            ([[1, 0],
+              [0, 1]],
+             [[1.89681370, -0.36242092],
+              [-0.36242092, 1.89681370]]),
+        ]
     )
-    s2n = qcp.s2n([0, 1])
-    npt.assert_allclose(
-        s2n, [0.00000000, -2.00000000],
-        atol=absolute_tolerance
-    )
+    def test_oli(self, code, trials):
+        if 'e2n' not in dir(code):
+            pytest.skip('not implemented')
+        """Linear transformation E2*N"""
+        n, e2n = trials
+        numpy.testing.assert_allclose(code.e2n(n), e2n)
 
-
-@pytest.mark.parametrize(
-    'args',
-    [
-        ('x', (0,), {('x', 0): [0, 0]},),
-        ('z', (0,), {('z', 0): [0.37231269, -0.37231269]}),
-        ('z', (0.5,), {('z', 0.5): [0.46541904, -0.31024805]}),
-        (
-            'z', (0, 0.5),
-            {
-                ('z', 0): [0.37231269, -0.37231269],
-                ('z', 0.5): [0.46541904, -0.31024805]
-            }
-        ),
-        (
-            'xz', (0,),
-            {
-                ('x', 0): [0.0, 0.0],
-                ('z', 0): [0.37231269, -0.37231269],
-            }
-        ),
-        (
-            'xz', (0.5,),
-            {
-                ('x', 0.5): [0., 0.],
-                ('z', 0.5): [-0.31024805, 0.46541904]
-            }
-        ),
-        (
-            'xz', (0, 0.5),
-            {
-                ('x', 0): [0., 0.],
-                ('x', 0.5): [0., 0.],
-                ('z', 0): [0.37231269, -0.37231269],
-                ('z', 0.5): [0.46541904, -0.31024805],
-            }
-        )
-    ],
-    ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
-)
-def test_initial_guess(qcp, args):
-    """form paired trialvectors from rhs/orbdiag"""
-    if 'initial_guess' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-    ops, freqs, expected = args
-    initial_guess = qcp.initial_guess(ops=ops, freqs=freqs)
-    for op, freq in zip(ops, freqs):
+    def test_sli(self, code):
+        """Linear transformation E2*N"""
+        if 's2n' not in dir(code):
+            pytest.skip('not implemented')
+        absolute_tolerance = 1e-10
+        s2n = code.s2n([1, 0])
         npt.assert_allclose(
-            initial_guess[(op, freq)],
-            expected[(op, freq)],
-            rtol=1e-5,
+            s2n, [2.00000000,  0.00000000],
+            atol=absolute_tolerance
+        )
+        s2n = code.s2n([0, 1])
+        npt.assert_allclose(
+            s2n, [0.00000000, -2.00000000],
+            atol=absolute_tolerance
+        )
+
+
+    @pytest.mark.parametrize(
+        'args',
+        [
+            ('x', (0,), {('x', 0): [0, 0]},),
+            ('z', (0,), {('z', 0): [0.37231269, -0.37231269]}),
+            ('z', (0.5,), {('z', 0.5): [0.46541904, -0.31024805]}),
+            (
+                'z', (0, 0.5),
+                {
+                    ('z', 0): [0.37231269, -0.37231269],
+                    ('z', 0.5): [0.46541904, -0.31024805]
+                }
+            ),
+            (
+                'xz', (0,),
+                {
+                    ('x', 0): [0.0, 0.0],
+                    ('z', 0): [0.37231269, -0.37231269],
+                }
+            ),
+            (
+                'xz', (0.5,),
+                {
+                    ('x', 0.5): [0., 0.],
+                    ('z', 0.5): [-0.31024805, 0.46541904]
+                }
+            ),
+            (
+                'xz', (0, 0.5),
+                {
+                    ('x', 0): [0., 0.],
+                    ('x', 0.5): [0., 0.],
+                    ('z', 0): [0.37231269, -0.37231269],
+                    ('z', 0.5): [0.46541904, -0.31024805],
+                }
+            )
+        ],
+        ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
+    )
+    def test_initial_guess(self, code, args):
+        """form paired trialvectors from rhs/orbdiag"""
+        if 'initial_guess' not in dir(code):
+            pytest.skip('not implemented')
+        ops, freqs, expected = args
+        initial_guess = code.initial_guess(ops=ops, freqs=freqs)
+        for op, freq in zip(ops, freqs):
+            npt.assert_allclose(
+                initial_guess[(op, freq)],
+                expected[(op, freq)],
+                rtol=1e-5,
+                )
+
+
+    @pytest.mark.parametrize(
+        'args',
+        [
+            (
+                {('x', 0): [0, 0]},
+                []
+            ),
+            (
+                {('z', 0): [0.37231269, -0.37231269]},
+                [[0.37231269, -0.37231269]]
+            ),
+            (
+                {('z', 0.5): [0.46541904, -0.31024805]},
+                [[0.46541904, -0.31024805], [-0.31024805, 0.46541904]]
+            ),
+            (
+                {
+                    ('z', 0): [0.37231269, -0.37231269],
+                    ('z', 0.5): [0.46541904, -0.31024805]
+                },
+                [
+                    [0.37231269, -0.37231269],
+                    [0.46541904, -0.31024805],
+                    [-0.31024805, 0.46541904],
+                ]
+            ),
+            (
+                {
+                    ('x', 0): [0.0, 0.0],
+                    ('z', 0): [0.37231269, -0.37231269],
+                },
+                [
+                    [0.37231269, -0.37231269],
+                ]
+            ),
+            (
+                {
+                    ('x', 0.5): [0., 0.],
+                    ('z', 0.5): [-0.31024805, 0.46541904]
+                },
+                [
+                    [-0.31024805, 0.46541904],
+                    [0.46541904, -0.31024805],
+                ]
+            ),
+            (
+                {
+                    ('x', 0): [0., 0.],
+                    ('x', 0.5): [0., 0.],
+                    ('z', 0): [0.37231269, -0.37231269],
+                    ('z', 0.5): [0.46541904, -0.31024805],
+                },
+                [
+                    [0.37231269, -0.37231269],
+                    [0.46541904, -0.31024805],
+                    [-0.31024805, 0.46541904],
+                ]
+            )
+        ],
+        ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
+    )
+    def test_setup_trials(self, code, args):
+        """
+        Form paired trialvectors from initial guesses (rhs/diagonal)
+        Parameterized input lists are reformatted to arrays.
+        """
+        if 'setup_trials' not in dir(code):
+            pytest.skip('not implemented')
+
+        initial_guesses, expected = args
+        ig = {
+            key: numpy.array(vector)
+            for key, vector in initial_guesses.items()
+        }
+        b = code.setup_trials(ig, renormalize=False)
+        npt.assert_allclose(b.T, expected, rtol=1e-5)
+
+
+    @pytest.mark.parametrize(
+        'args',
+        [
+            ('x', (0,), {('x', 0): [0, 0]}),
+            ('z', (0,), {('z', 0): [0.82378017, -0.82378017]}),
+            ('z', (0.5,), {('z', 0.5): [1.91230027, -0.40322064]}),
+            (
+                'z', (0, 0.5),
+                {
+                    ('z', 0): [0.82378017, -0.82378017],
+                    ('z', 0.5): [1.91230027, -0.40322064]
+                }
+            ),
+        ],
+        ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)']
+    )
+    def test_solve(self, code, args):
+        if 'lr_solve' not in dir(code):
+            pytest.skip('not implemented')
+
+        ops, freqs, expected = args
+        solutions = code.lr_solve(ops=ops, freqs=freqs)
+        for op, freq in solutions:
+            npt.assert_allclose(
+                solutions[(op, freq)],
+                expected[(op, freq)]
             )
 
 
-@pytest.mark.parametrize(
-    'args',
-    [
-        (
-            {('x', 0): [0, 0]},
-            []
-        ),
-        (
-            {('z', 0): [0.37231269, -0.37231269]},
-            [[0.37231269, -0.37231269]]
-        ),
-        (
-            {('z', 0.5): [0.46541904, -0.31024805]},
-            [[0.46541904, -0.31024805], [-0.31024805, 0.46541904]]
-        ),
-        (
-            {
-                ('z', 0): [0.37231269, -0.37231269],
-                ('z', 0.5): [0.46541904, -0.31024805]
-            },
-            [
-                [0.37231269, -0.37231269],
-                [0.46541904, -0.31024805],
-                [-0.31024805, 0.46541904],
-            ]
-        ),
-        (
-            {
-                ('x', 0): [0.0, 0.0],
-                ('z', 0): [0.37231269, -0.37231269],
-            },
-            [
-                [0.37231269, -0.37231269],
-            ]
-        ),
-        (
-            {
-                ('x', 0.5): [0., 0.],
-                ('z', 0.5): [-0.31024805, 0.46541904]
-            },
-            [
-                [-0.31024805, 0.46541904],
-                [0.46541904, -0.31024805],
-            ]
-        ),
-        (
-            {
-                ('x', 0): [0., 0.],
-                ('x', 0.5): [0., 0.],
-                ('z', 0): [0.37231269, -0.37231269],
-                ('z', 0.5): [0.46541904, -0.31024805],
-            },
-            [
-                [0.37231269, -0.37231269],
-                [0.46541904, -0.31024805],
-                [-0.31024805, 0.46541904],
-            ]
-        )
-    ],
-    ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
-)
-def test_setup_trials(qcp, args):
-    """
-    Form paired trialvectors from initial guesses (rhs/diagonal)
-    Parameterized input lists are reformatted to arrays.
-    """
-    if 'setup_trials' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
+    @pytest.mark.parametrize(
+        'args',
+        [
+            ('z', 'z', (0,), {('z', 'z', 0): -3.066295447276}),
+            ('z', 'z', (0.5,), {('z', 'z', 0.5): -4.309445328973108}),
+        ],
+        ids=['0', '0.5']
+    )
+    def test_lr(self, code, args):
+        if 'lr' not in dir(code):
+            pytest.skip('not implemented')
 
-    initial_guesses, expected = args
-    ig = {
-        key: numpy.array(vector)
-        for key, vector in initial_guesses.items()
-    }
-    b = qcp.setup_trials(ig, renormalize=False)
-    npt.assert_allclose(b.T, expected, rtol=1e-5)
+        aops, bops, freqs, expected = args
+        lr = code.lr(aops, bops, freqs)
+        for k, v in lr.items():
+            npt.assert_allclose(v, expected[k])
 
+    @pytest.mark.parametrize(
+        'args',
+        [
+            ('z', 1, {('z', 0): 1.1946797}),
+        ],
+        ids=['z1', ]
+    )
+    def test_pp(self, code, args):
+        if 'pp' not in dir(code):
+            pytest.skip('not implemented')
 
-@pytest.mark.parametrize(
-    'args',
-    [
-        ('x', (0,), {('x', 0): [0, 0]}),
-        ('z', (0,), {('z', 0): [0.82378017, -0.82378017]}),
-        ('z', (0.5,), {('z', 0.5): [1.91230027, -0.40322064]}),
-        (
-            'z', (0, 0.5),
-            {
-                ('z', 0): [0.82378017, -0.82378017],
-                ('z', 0.5): [1.91230027, -0.40322064]
-            }
-        ),
-    ],
-    ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)']
-)
-def test_solve(qcp, args):
-    if 'lr_solve' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
+        aops, nfreqs, expected = args
+        pp = code.pp(aops, nfreqs)
+        for k, v in pp.items():
+            npt.assert_allclose(v, expected[k])
 
-    ops, freqs, expected = args
-    solutions = qcp.lr_solve(ops=ops, freqs=freqs)
-    for op, freq in solutions:
-        npt.assert_allclose(
-            solutions[(op, freq)],
-            expected[(op, freq)]
-        )
+    def test_excitation_energies(self, code):
+        if 'excitation_energies' not in dir(code):
+            pytest.skip('not implemented')
 
+        w = code.excitation_energies(1)
+        assert w == pytest.approx(0.93093411)
 
-@pytest.mark.parametrize(
-    'args',
-    [
-        ('z', 'z', (0,), {('z', 'z', 0): -3.066295447276}),
-        ('z', 'z', (0.5,), {('z', 'z', 0.5): -4.309445328973108}),
-    ],
-    ids=['0', '0.5']
-)
-def test_lr(qcp, args):
-    if 'lr' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
+    def test_eigenvectors(self, code):
+        if 'eigenvectors' not in dir(code):
+            pytest.skip('not implemented')
 
-    aops, bops, freqs, expected = args
-    lr = qcp.lr(aops, bops, freqs)
-    for k, v in lr.items():
-        npt.assert_allclose(v, expected[k])
+        X = code.eigenvectors(1)
+        npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
 
+    def test_dim(self, code):
+        if 'response_dim' not in dir(code):
+            pytest.skip('not implemented')
 
-@pytest.mark.parametrize(
-    'args',
-    [
-        ('z', 1, {('z', 0): 1.1946797}),
-    ],
-    ids=['z1', ]
-)
-def test_pp(qcp, args):
-    if 'pp' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-
-    aops, nfreqs, expected = args
-    pp = qcp.pp(aops, nfreqs)
-    for k, v in pp.items():
-        npt.assert_allclose(v, expected[k])
-
-
-def test_excitation_energies(qcp):
-    if 'excitation_energies' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-
-    w = qcp.excitation_energies(1)
-    assert w == pytest.approx(0.93093411)
-
-
-def test_eigenvectors(qcp):
-    if 'eigenvectors' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-
-    X = qcp.eigenvectors(1)
-    npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
-
-
-def test_dim(qcp):
-    if 'response_dim' not in dir(qcp):
-        pytest.skip('not implemented')
-    qcp.setup(**settings)
-
-    assert qcp.response_dim() == 2
+        assert code.response_dim() == 2
