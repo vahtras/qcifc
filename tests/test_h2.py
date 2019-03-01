@@ -1,32 +1,13 @@
-import pathlib
-import itertools
-
 import pytest
-import numpy
+import numpy as np
 import numpy.testing as npt
 
-from . import codes
-from . import TestQC
+from . import TestQC, get_codes_settings, get_codes_ids
 
 CASE = 'h2'
-test_root = pathlib.Path(__file__).parent
-test_dir = test_root/f'test_{CASE}.d'
-settings = [dict(
-    case=CASE,
-    xyz=test_dir/f'{CASE}.xyz',
-    inp=test_dir/f'{CASE}.inp',
-    out=test_dir/f'{CASE}.out',
-    basis=test_root/'bases'/'STO-3G',
-    _tmpdir=test_dir,
-)]
 
-
-#
-# code fixture takes params from  codes, avaliable in request.param
-# purpose to inject parameters into the fixture
-#
-codes_settings = list(itertools.product(codes.values(), settings))
-ids = list(codes.keys())
+codes_settings = get_codes_settings(CASE)
+ids = get_codes_ids()
 
 
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
@@ -34,12 +15,12 @@ class TestH2(TestQC):
 
     def test_get_wrkdir(self, code):
         """Get factory workdir"""
-        assert code.get_workdir() == test_dir
+        assert code.get_workdir() == code.xyz.parent
 
     def test_set_wrkdir(self, code):
         """Get factory workdir"""
         code.set_workdir('/tmp/123')
-        assert code.get_workdir() == '/tmp/123'
+        assert code.get_workdir() == code._tmpdir
 
     def test_get_overlap(self, code):
         """Get overlap"""
@@ -86,14 +67,14 @@ class TestH2(TestQC):
         """Get alpha Fock matrix"""
         code.run_scf()
 
-        da = numpy.array([[1., 0.], [0., 1.]])
-        db = numpy.array([[1., 0.], [0., 0.]])
-        faref = numpy.array([
+        da = np.array([[1., 0.], [0., 1.]])
+        db = np.array([[1., 0.], [0., 0.]])
+        faref = np.array([
             [1.04701025, 0.44459112],
             [0.44459112, 0.8423992]
         ])
 
-        fbref = numpy.array([
+        fbref = np.array([
             [1.34460081, 0.88918225],
             [0.88918225, 1.61700513]
         ])
@@ -133,7 +114,7 @@ class TestH2(TestQC):
         """Linear transformation E2*N"""
         self.skip_if_not_implemented('e2n', code)
         n, e2n = trials
-        numpy.testing.assert_allclose(code.e2n(n), e2n)
+        npt.assert_allclose(code.e2n(n), e2n)
 
     def test_sli(self, code):
         """Linear transformation S2*N"""
@@ -275,7 +256,7 @@ class TestH2(TestQC):
 
         initial_guesses, expected = args
         ig = {
-            key: numpy.array(vector)
+            key: np.array(vector)
             for key, vector in initial_guesses.items()
         }
         b = code.setup_trials(ig, renormalize=False)

@@ -1,28 +1,14 @@
-import pathlib
-import itertools
-
 import pytest
 import numpy as np
 import numpy.testing as npt
 from util import full
 
-from . import codes
-from . import TestQC
+from . import TestQC, get_codes_settings, get_codes_ids
 
 CASE = 'lih'
-test_root = pathlib.Path(__file__).parent
-test_dir = test_root/f'test_{CASE}.d'
-settings = [dict(
-    case=CASE,
-    xyz=test_dir/f'{CASE}.xyz',
-    inp=test_dir/f'{CASE}.inp',
-    out=test_dir/f'{CASE}.out',
-    basis=test_root/'bases'/'STO-3G',
-    _tmpdir=test_dir,
-)]
 
-codes_settings = list(itertools.product(codes.values(), settings))
-ids = list(codes.keys())
+codes_settings = get_codes_settings(CASE)
+ids = get_codes_ids()
 
 
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
