@@ -1,0 +1,22 @@
+@jobs
+task: hf
+@end
+
+@method settings
+basis: STO-3G
+basis path: ../bases
+@end
+
+@molecule
+charge: 1
+multiplicity: 1
+units: angstrom
+xyz:  
+C   0.000000   0.000000   0.000000
+H   1.082000   0.000000   0.000000
+H  -0.426714   0.994303   0.000000
+H  -0.306762  -0.541692  -1.077034
+H  -1.158115  -0.245191  -2.524315
+H  -0.426714  -0.647067   0.754946
+O  -0.670146  -0.989804  -2.187056
+@end 
