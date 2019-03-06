@@ -1,0 +1,9 @@
+BASIS
+STO-3G
+Generated from TS06.zmat by molconvert
+====================================
+Atomtypes=1 Units=Angtrom Nosymmetry
+Charge=1.0 Atoms=3
+H   0.000000   0.000000   0.000000
+H   0.925000   0.000000   0.000000
+H   1.850000   0.000000   0.000000
