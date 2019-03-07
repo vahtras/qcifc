@@ -42,6 +42,21 @@ class QuantumChemistry(abc.ABC):
         """Get densities"""
         return self._da, self._db
 
+    def initial_guess(self, ops="xyz", freqs=(0,)):
+        od = self.get_orbital_diagonal()
+        sd = self.get_overlap_diagonal()
+        dim = od.shape[0]
+        ig = {}
+        for op, grad in zip(ops, self.get_rhs(*ops)):
+            gn = grad.norm2()
+            for w in freqs:
+                if gn < SMALL:
+                    ig[(op, w)] = np.zeros(dim)
+                else:
+                    td = od - w*sd
+                    ig[(op, w)] = grad/td
+        return ig
+
 
 def swap(xy):
     """

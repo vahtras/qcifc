@@ -20,7 +20,7 @@ class VeloxChem(QuantumChemistry):
         self.out = kwargs.get('out')
 
     def is_master(self):
-        return self.rank  == vlx.mpi_master()
+        return self.rank == vlx.mpi_master()
 
     def get_workdir(self):
         return self._tmpdir
@@ -34,12 +34,8 @@ class VeloxChem(QuantumChemistry):
         )
         master_node = (self.rank == vlx.mpi_master())
         if master_node:
-            mol = vlx.InputParser.create_molecule_from_xyz(
-                self.xyz
-            )
-            bas = vlx.InputParser(
-                self.basis
-            ).create_basis_set(mol)
+            mol = vlx.Molecule.read_xyz(self.xyz)
+            bas = vlx.MolecularBasis.read(mol, self.basis)
         else:
             mol = vlx.Molecule()
             bas = vlx.MolecularBasis()
@@ -48,6 +44,24 @@ class VeloxChem(QuantumChemistry):
         bas.broadcast(self.rank, self.comm)
 
         S = overlap_driver.compute(mol, bas, self.comm)
+        return S.to_numpy()
+
+    def _get_dipole(self):
+        dipole_driver = vlx.ElectricDipoleIntegralsDriver(
+            self.rank, self.size, self.comm
+        )
+        master_node = (self.rank == vlx.mpi_master())
+        if master_node:
+            mol = vlx.Molecule.read_xyz(self.xyz)
+            bas = vlx.MolecularBasis.read(mol, self.basis)
+        else:
+            mol = vlx.Molecule()
+            bas = vlx.MolecularBasis()
+
+        mol.broadcast(self.rank, self.comm)
+        bas.broadcast(self.rank, self.comm)
+
+        S = dipole_driver.compute(mol, bas, self.comm)
         return S.to_numpy()
 
     def get_one_el_hamiltonian(self):
@@ -59,8 +73,8 @@ class VeloxChem(QuantumChemistry):
         )
         master_node = (self.rank == vlx.mpi_master())
         if master_node:
-            mol = vlx.InputParser.create_molecule_from_xyz(self.xyz)
-            bas = vlx.InputParser(self.basis).create_basis_set(mol)
+            mol = vlx.Molecule.read_xyz(self.xyz)
+            bas = vlx.MolecularBasis.read(mol, self.basis)
         else:
             mol = vlx.Molecule()
             bas = vlx.MolecularBasis()
@@ -74,7 +88,7 @@ class VeloxChem(QuantumChemistry):
         return T-V
 
     def get_nuclear_repulsion(self):
-        mol = vlx.InputParser.create_molecule_from_xyz(self.xyz)
+        mol = vlx.Molecule.read_xyz(self.xyz)
         return mol.nuclear_repulsion_energy()
 
     def run_scf(self):
@@ -105,8 +119,8 @@ class VeloxChem(QuantumChemistry):
         from veloxchem.veloxchemlib import denmat, fockmat
         master_node = (self.rank == vlx.mpi_master())
         if master_node:
-            mol = vlx.InputParser.create_molecule_from_xyz(self.xyz)
-            bas = vlx.InputParser(self.basis).create_basis_set(mol)
+            mol = vlx.Molecule.read_xyz(self.xyz)
+            bas = vlx.MolecularBasis.read(mol, self.basis)
         else:
             mol = vlx.Molecule()
             bas = vlx.MolecularBasis()
@@ -128,7 +142,6 @@ class VeloxChem(QuantumChemistry):
         eri_driver.compute(vlx.ericut.qqden, 1.0e-12, mol, bas)
         eri_driver.compute(fock, dens, mol, bas, screening, self.comm)
         fock.reduce_sum(self.rank, self.size, self.comm)
-
 
         ft = fock.to_numpy(0)
         fs = -fock.to_numpy(1)

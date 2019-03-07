@@ -1,5 +1,5 @@
 test:
-	python -m pytest --cov=qcifc --cov-report="html" tests 2>&1 | tee errors.err
+	python -m pytest --cov=qcifc --cov-report="term" --cov-report="html" tests 2>&1 | tee errors.err
 debug:
 	python -m pytest -x --pdb tests
 testv:

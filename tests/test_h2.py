@@ -29,6 +29,14 @@ class TestH2(TestQC):
             [[1.0, 0.65987313], [0.65987313, 1.0]]
         )
 
+    def test_get_dipole(self, code):
+        """Get dipole matrix"""
+        self.skip_if_not_implemented('get_dipole', code)
+        x, y, z = code.get_dipole()
+        npt.assert_allclose(x, [[0, 0], [0, 0]])
+        npt.assert_allclose(y, [[0, 0], [0, 0]])
+        npt.assert_allclose(z, [[0, .46138241], [.46138241, 1.39839733]])
+
     def test_get_h1(self, code):
         """Get one-electron Hamiltonian"""
         npt.assert_allclose(
@@ -97,7 +105,10 @@ class TestH2(TestQC):
         npt.assert_allclose(x, [0, 0])
         npt.assert_allclose(y, [0, 0])
         npt.assert_allclose(z, [1.86111268, -1.86111268])
-        npt.assert_allclose((x, y, z), ([0, 0], [0, 0], [1.86111268, -1.86111268]))
+        npt.assert_allclose(
+            (x, y, z),
+            ([0, 0], [0, 0], [1.86111268, -1.86111268])
+        )
 
     @pytest.mark.parametrize(
         'trials',
@@ -170,11 +181,16 @@ class TestH2(TestQC):
                 }
             )
         ],
-        ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
+        ids=[
+            'x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)',
+            'xz-0', 'xz-0.5', 'xz-(0, 0.5)'
+        ]
     )
     def test_initial_guess(self, code, args):
         """form paired trialvectors from rhs/orbdiag"""
-        self.skip_if_not_implemented('initial_guess', code)
+        self.skip_if_not_implemented('get_initial_guess', code)
+        self.skip_if_not_implemented('get_orbital_diagonal', code)
+        self.skip_if_not_implemented('get_overlap_diagonal', code)
 
         ops, freqs, expected = args
         initial_guess = code.initial_guess(ops=ops, freqs=freqs)
@@ -184,7 +200,6 @@ class TestH2(TestQC):
                 expected[(op, freq)],
                 rtol=1e-5,
                 )
-
 
     @pytest.mark.parametrize(
         'args',
@@ -245,7 +260,10 @@ class TestH2(TestQC):
                 ]
             )
         ],
-        ids=['x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)', 'xz-0', 'xz-0.5', 'xz-(0, 0.5)']
+        ids=[
+            'x-0', 'z-0', 'z-0.5', 'z-(0, 0.5)',
+            'xz-0', 'xz-0.5', 'xz-(0, 0.5)'
+        ]
     )
     def test_setup_trials(self, code, args):
         """
@@ -261,7 +279,6 @@ class TestH2(TestQC):
         }
         b = code.setup_trials(ig, renormalize=False)
         npt.assert_allclose(b.T, expected, rtol=1e-5)
-
 
     @pytest.mark.parametrize(
         'args',
@@ -289,7 +306,6 @@ class TestH2(TestQC):
                 solutions[(op, freq)],
                 expected[(op, freq)]
             )
-
 
     @pytest.mark.parametrize(
         'args',

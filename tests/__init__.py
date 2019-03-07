@@ -30,7 +30,7 @@ def get_settings(case):
         xyz=test_dir/f'{case}.xyz',
         inp=test_dir/f'{case}.inp',
         out=test_dir/f'{case}.out',
-        basis=test_root/'bases'/'STO-3G',
+        basis='STO-3G',
         _tmpdir=test_dir,
     )]
     return settings

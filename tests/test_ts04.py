@@ -178,6 +178,8 @@ class TestTS04(TestQC):
     def test_initial_guess(self, code, args):
         """form paired trialvectors from rhs/orbdiag"""
         self.skip_if_not_implemented('initial_guess', code)
+        self.skip_if_not_implemented('get_orbital_diagonal', code)
+        self.skip_if_not_implemented('get_overlap_diagonal', code)
         ops, freqs, expected = args
         initial_guess = code.initial_guess(ops, freqs)
         for op, freq in zip(ops, freqs):

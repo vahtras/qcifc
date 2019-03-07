@@ -49,6 +49,15 @@ class DaltonFactory(QuantumChemistry):
             os.path.join(self.get_workdir(), "AOONEINT")
             )["potnuc"]
 
+    def get_dipole(self):
+        """Get dipole integrals"""
+        return prop.read(
+            "XDIPLEN",
+            "YDIPLEN",
+            "ZDIPLEN",
+            filename=os.path.join(self.get_workdir(), "AOPROPER")
+            )
+
     def get_mo(self):
         """Get molecular orbitals from restart file"""
         rst = sirrst.SiriusRestart(

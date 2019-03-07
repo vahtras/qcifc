@@ -4,7 +4,6 @@ task: hf
 
 @method settings
 basis: STO-3G
-basis path: ../bases
 @end
 
 @molecule
