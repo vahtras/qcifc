@@ -91,6 +91,11 @@ class TestH2(TestQC):
         npt.assert_allclose(fa, faref)
         npt.assert_allclose(fb, fbref)
 
+    def test_vec2mat(self, code):
+        self.skip_if_not_implemented('vec2mat', code)
+        vec = [1.0, 0.5]
+        npt.assert_allclose(code.vec2mat(vec), [[0.0, 1.0], [0.5, 0.0]])
+
     def test_get_orbhess(self, code):
         """Get diagonal orbital hessian"""
         self.skip_if_not_implemented('get_orbital_diagonal', code)

@@ -3,6 +3,7 @@ import os
 from mpi4py import MPI
 import numpy as np
 import veloxchem as vlx
+from veloxchem.veloxchemlib import szblock
 
 from .core import QuantumChemistry
 
@@ -28,6 +29,15 @@ class VeloxChem(QuantumChemistry):
     def set_workdir(self, tmpdir):
         self._tmpdir = tmpdir
 
+    def _vec2mat(self, vec):
+        xv = vlx.ExcitationVector(szblock.aa, 0, 1, 1, 2, True)
+        xv.set_zcoefficient(1.0, 1)
+        print(xv)
+        # zvec = ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
+        assert False
+        mat = [[0, 1], [.5, 0]]
+        return mat
+
     def get_overlap(self):
         overlap_driver = vlx.OverlapIntegralsDriver(
             self.rank, self.size, self.comm
@@ -46,7 +56,7 @@ class VeloxChem(QuantumChemistry):
         S = overlap_driver.compute(mol, bas, self.comm)
         return S.to_numpy()
 
-    def _get_dipole(self):
+    def get_dipole(self):
         dipole_driver = vlx.ElectricDipoleIntegralsDriver(
             self.rank, self.size, self.comm
         )
@@ -61,8 +71,8 @@ class VeloxChem(QuantumChemistry):
         mol.broadcast(self.rank, self.comm)
         bas.broadcast(self.rank, self.comm)
 
-        S = dipole_driver.compute(mol, bas, self.comm)
-        return S.to_numpy()
+        D = dipole_driver.compute(mol, bas, self.comm)
+        return D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
 
     def get_one_el_hamiltonian(self):
         kinetic_driver = vlx.KineticEnergyIntegralsDriver(

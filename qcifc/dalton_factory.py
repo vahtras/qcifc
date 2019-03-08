@@ -3,7 +3,7 @@ import subprocess
 
 import numpy
 
-from daltools import one, sirrst, sirifc, prop
+from daltools import one, sirrst, sirifc, prop, rspvec
 from dalmisc import oli
 import two.core
 import two.vb
@@ -114,6 +114,11 @@ class DaltonFactory(QuantumChemistry):
             *(self.labels[label] for label in labels),
             tmpdir=self.get_workdir()
         )
+
+    def vec2mat(self, vec):
+        ifc = self._sirifc()
+        mat = rspvec.tomat(vec, ifc)
+        return mat
 
     def e2n(self, trial):
         b = numpy.array(trial)
