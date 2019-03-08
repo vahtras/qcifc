@@ -120,6 +120,11 @@ class DaltonFactory(QuantumChemistry):
         mat = rspvec.tomat(vec, ifc)
         return mat
 
+    def mat2vec(self, mat):
+        ifc = self._sirifc()
+        mat = rspvec.tovec(numpy.array(mat), ifc)
+        return mat
+
     def e2n(self, trial):
         b = numpy.array(trial)
         u = numpy.ndarray(b.shape)

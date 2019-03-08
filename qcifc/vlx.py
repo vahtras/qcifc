@@ -30,19 +30,20 @@ class VeloxChem(QuantumChemistry):
         self._tmpdir = tmpdir
 
     def vec2mat(self, vec):
-        xv = vlx.ExcitationVector(szblock.aa, 0, 1, 1, 2, True)
+        nocc = self.task.molecule.number_of_electrons() // 2
+        norb = self.scf_driver.mol_orbs.number_mos()
+        xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         zlen = len(vec) // 2
         z, y = vec[:zlen], vec[zlen:]
         xv.set_yzcoefficients(z, y)
-        print(xv)
         kz = xv.get_zmatrix()
         ky = xv.get_ymatrix()
         rows = kz.number_of_rows() + ky.number_of_rows()
         cols = kz.number_of_columns() + ky.number_of_columns()
         kzy = np.zeros((rows, cols))
-        kzy[:kz.number_of_rows(), kz.number_of_columns():]  = kz.to_numpy()
-        kzy[ky.number_of_rows():, :ky.number_of_columns() ] = ky.to_numpy()
-        
+        kzy[:kz.number_of_rows(), kz.number_of_columns():] = kz.to_numpy()
+        kzy[ky.number_of_rows():, :ky.number_of_columns()] = ky.to_numpy()
+
         # zvec = ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         return kzy
 
@@ -114,8 +115,8 @@ class VeloxChem(QuantumChemistry):
         inp = str(self.inp)
         out = str(self.out)
         os.chdir(self.get_workdir())
-        task = vlx.MpiTask((inp, out), self.comm)
-        self.scf_driver.compute_task(task)
+        self.task = vlx.MpiTask((inp, out), self.comm)
+        self.scf_driver.compute_task(self.task)
 
     def get_mo(self):
         mos = self.scf_driver.mol_orbs.alpha_to_numpy()
