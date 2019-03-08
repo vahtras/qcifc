@@ -29,14 +29,22 @@ class VeloxChem(QuantumChemistry):
     def set_workdir(self, tmpdir):
         self._tmpdir = tmpdir
 
-    def _vec2mat(self, vec):
+    def vec2mat(self, vec):
         xv = vlx.ExcitationVector(szblock.aa, 0, 1, 1, 2, True)
-        xv.set_zcoefficient(1.0, 1)
+        zlen = len(vec) // 2
+        z, y = vec[:zlen], vec[zlen:]
+        xv.set_yzcoefficients(z, y)
         print(xv)
+        kz = xv.get_zmatrix()
+        ky = xv.get_ymatrix()
+        rows = kz.number_of_rows() + ky.number_of_rows()
+        cols = kz.number_of_columns() + ky.number_of_columns()
+        kzy = np.zeros((rows, cols))
+        kzy[:kz.number_of_rows(), kz.number_of_columns():]  = kz.to_numpy()
+        kzy[ky.number_of_rows():, :ky.number_of_columns() ] = ky.to_numpy()
+        
         # zvec = ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
-        assert False
-        mat = [[0, 1], [.5, 0]]
-        return mat
+        return kzy
 
     def get_overlap(self):
         overlap_driver = vlx.OverlapIntegralsDriver(
