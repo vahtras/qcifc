@@ -47,6 +47,22 @@ class VeloxChem(QuantumChemistry):
         # zvec = ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         return kzy
 
+    def mat2vec(self, mat):
+        nocc = self.task.molecule.number_of_electrons() // 2
+        norb = self.scf_driver.mol_orbs.number_mos()
+        xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
+        cre = xv.bra_unique_indexes()
+        ann = xv.ket_unique_indexes()
+        m = np.array(mat)
+        z = [m[i, j] for i, j in zip(cre, ann)]
+        y = [m[j, i] for i, j in zip(cre, ann)]
+        # xv.set_yzcoefficients(z, y)
+        return np.array(z + y)
+        assert False
+
+        return xv
+
+
     def get_overlap(self):
         overlap_driver = vlx.OverlapIntegralsDriver(
             self.rank, self.size, self.comm
