@@ -204,7 +204,7 @@ class VeloxChem(QuantumChemistry):
     def get_rhs(self, *args):
         """
         Create right-hand sides of linear response equations
-    
+
         Input: args, string labels of operators
                currently supported:
                     electric dipoles: x, y, z
@@ -224,3 +224,31 @@ class VeloxChem(QuantumChemistry):
         )
         gradients = tuple(self.mat2vec(m) for m in matrices)
         return gradients
+
+    def s2n(self, vecs):
+
+        b = np.array(vecs)
+
+        S = self.get_overlap()
+        da, db = self.get_densities()
+        D = da + db
+        mo = self.get_mo()
+
+        if len(b.shape) == 1:
+            kappa = self.vec2mat(vecs).T
+            kappa_ao = mo @ kappa @ mo.T
+
+            s2n_ao = kappa_ao.T@S@D - D@S@kappa_ao.T
+            s2n_mo = mo.T @ S @ s2n_ao @ S@mo
+            s2n_vecs = - self.mat2vec(s2n_mo)
+        elif len(b.shape) == 2:
+            s2n_vecs = np.ndarray(b.shape)
+            rows, columns = b.shape
+            for c in range(columns):
+                kappa = self.vec2mat(b[:, c]).T
+                kappa_ao = mo @ kappa @ mo.T
+
+                s2n_ao = kappa_ao.T@S@D - D@S@kappa_ao.T
+                s2n_mo = mo.T @ S @ s2n_ao @ S@mo
+                s2n_vecs[:, c] = - self.mat2vec(s2n_mo)
+        return s2n_vecs

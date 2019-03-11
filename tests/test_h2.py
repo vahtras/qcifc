@@ -137,22 +137,24 @@ class TestH2(TestQC):
         n, e2n = trials
         npt.assert_allclose(code.e2n(n), e2n)
 
-    def test_sli(self, code):
+    @pytest.mark.parametrize(
+        'trials',
+        [
+            ([1, 0], [2.0, 0.0]),
+            ([0, 1], [0.0, -2.0]),
+            ([[1, 0],
+              [0, 1]],
+             [[2.0, 0.0],
+              [0.0, -2.0]]),
+        ]
+    )
+    def test_sli(self, code, trials):
         """Linear transformation S2*N"""
         self.skip_if_not_implemented('s2n', code)
         if 's2n' not in dir(code):
             pytest.skip('not implemented')
-        absolute_tolerance = 1e-10
-        s2n = code.s2n([1, 0])
-        npt.assert_allclose(
-            s2n, [2.00000000,  0.00000000],
-            atol=absolute_tolerance
-        )
-        s2n = code.s2n([0, 1])
-        npt.assert_allclose(
-            s2n, [0.00000000, -2.00000000],
-            atol=absolute_tolerance
-        )
+        n, s2n = trials
+        npt.assert_allclose(code.s2n(n), s2n, atol=1e-8)
 
     @pytest.mark.parametrize(
         'args',

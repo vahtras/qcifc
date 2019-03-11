@@ -141,6 +141,7 @@ class DaltonFactory(QuantumChemistry):
     def s2n(self, trial):
         b = numpy.array(trial)
         u = numpy.ndarray(b.shape)
+
         if len(b.shape) == 1:
             u = oli.s2n(b, tmpdir=self.get_workdir())
         elif len(b.shape) == 2:
