@@ -29,38 +29,45 @@ class VeloxChem(QuantumChemistry):
     def set_workdir(self, tmpdir):
         self._tmpdir = tmpdir
 
-    def vec2mat(self, vec):
+    def np2vlx(self, vec):
         nocc = self.task.molecule.number_of_electrons() // 2
         norb = self.scf_driver.mol_orbs.number_mos()
         xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         zlen = len(vec) // 2
         z, y = vec[:zlen], vec[zlen:]
         xv.set_yzcoefficients(z, y)
+        return xv
+
+    def vec2mat(self, vec):
+        xv = self.np2vlx(vec)
         kz = xv.get_zmatrix()
         ky = xv.get_ymatrix()
+
         rows = kz.number_of_rows() + ky.number_of_rows()
         cols = kz.number_of_columns() + ky.number_of_columns()
+
         kzy = np.zeros((rows, cols))
         kzy[:kz.number_of_rows(), kz.number_of_columns():] = kz.to_numpy()
         kzy[ky.number_of_rows():, :ky.number_of_columns()] = ky.to_numpy()
 
-        # zvec = ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         return kzy
 
-    def mat2vec(self, mat):
+    def get_excitations(self):
         nocc = self.task.molecule.number_of_electrons() // 2
         norb = self.scf_driver.mol_orbs.number_mos()
         xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         cre = xv.bra_unique_indexes()
         ann = xv.ket_unique_indexes()
-        m = np.array(mat)
-        z = [m[i, j] for i, j in zip(cre, ann)]
-        y = [m[j, i] for i, j in zip(cre, ann)]
-        # xv.set_yzcoefficients(z, y)
-        return np.array(z + y)
-        assert False
+        return [(i, j) for i, j in zip(cre, ann)]
 
-        return xv
+    def mat2vec(self, mat):
+        excitations = self.get_excitations()
+
+        m = np.array(mat)
+        z = [m[i, j] for i, j in excitations]
+        y = [m[j, i] for i, j in excitations]
+
+        return np.array(z + y)
 
 
     def get_overlap(self):
@@ -153,7 +160,7 @@ class VeloxChem(QuantumChemistry):
             db = self.scf_driver.density.beta_to_numpy(0)
         return da, db
 
-    def get_two_el_fock(self):
+    def get_two_el_fock(self, densities=None):
         from veloxchem.veloxchemlib import denmat, fockmat
         master_node = (self.rank == vlx.mpi_master())
         if master_node:
@@ -165,7 +172,8 @@ class VeloxChem(QuantumChemistry):
         mol.broadcast(self.rank, self.comm)
         bas.broadcast(self.rank, self.comm)
 
-        da, db = self.get_densities()
+        if densities is None:
+            da, db = self.get_densities()
         dt = da + db
         ds = da - db
         dens = vlx.AODensityMatrix([dt, ds], denmat.rest)
@@ -252,3 +260,55 @@ class VeloxChem(QuantumChemistry):
                 s2n_mo = mo.T @ S @ s2n_ao @ S@mo
                 s2n_vecs[:, c] = - self.mat2vec(s2n_mo)
         return s2n_vecs
+
+    def _e2n(self, vecs):
+      first = False
+      if first:
+        vecs = np.array(vecs)
+        xv = [self.np2vlx(vecs)]
+
+        a2x = vlx.tdaexcidriver.TDASigmaVectorDriver(
+            self.rank, self.size, self.comm
+        )
+        eri_driver = vlx.ElectronRepulsionIntegralsDriver(
+            self.rank, self.size, self.comm
+        )
+
+        mol = self.task.molecule
+        bas = self.task.ao_basis
+        mo = self.scf_driver.mol_orbs
+        qq_data = eri_driver.compute(vlx.ericut.qq, 1.0e-12, mol, bas)
+        sigma_vecs = a2x.compute(xv, qq_data, mo,  mol, bas, self.comm)
+        e2n = [2*s.to_numpy() for s in sigma_vecs][0]
+        return np.array(e2n)
+      else:
+        vecs = np.array(vecs)
+
+        S = self.get_overlap()
+        fa, fb = self.get_two_el_fock()
+        h = self.get_one_el_hamiltonian()
+        fa += h
+        fb += h
+        da, db = self.get_densities()
+        mo = self.get_mo()
+
+        kN = self.vec2mat(vecs).T
+        kn = mo @ kN @ mo.T
+
+        dak = kn.T@S@da - da@S@kn.T
+        dbk = kn.T@S@db - db@S@kn.T
+
+        self.set_densities(dak, dbk)
+        fak, fbk = self.get_two_el_fock()
+
+        kfa = S@kn@fa - fa@kn@S
+        kfb = S@kn@fa - fa@kn@S
+
+        fa = fak + kfa
+        fb = fbk + kfb
+
+        gao = S@(da@fa.T + db@fb.T) - (fa.T@da + fb.T@db)*S
+        gmo = mo.T @ gao @ mo
+
+        gv = - self.mat2vec(gmo)
+        return gv
