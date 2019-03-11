@@ -145,9 +145,12 @@ class VeloxChem(QuantumChemistry):
         )
 
     def get_densities(self):
-        from veloxchem import denmat
-        da = self._da.alpha_to_numpy(0)
-        db = self._da.beta_to_numpy(1)
+        try:
+            da = self._da.alpha_to_numpy(0)
+            db = self._da.beta_to_numpy(1)
+        except AttributeError:
+            da = self.scf_driver.density.alpha_to_numpy(0)
+            db = self.scf_driver.density.beta_to_numpy(0)
         return da, db
 
     def get_two_el_fock(self):
@@ -185,3 +188,39 @@ class VeloxChem(QuantumChemistry):
         fb = (ft - fs)/2
 
         return fa, fb
+
+    def get_orbital_diagonal(self):
+        nocc = self.task.molecule.number_of_electrons() // 2
+        norb = self.scf_driver.mol_orbs.number_mos()
+        xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
+        cre = xv.bra_unique_indexes()
+        ann = xv.ket_unique_indexes()
+
+        orben = self.scf_driver.mol_orbs.ea_to_numpy()
+        z = [4*(orben[j] - orben[i]) for i, j in zip(cre, ann)]
+        e2c = np.array(z + z)
+        return e2c
+
+    def get_rhs(self, *args):
+        """
+        Create right-hand sides of linear response equations
+    
+        Input: args, string labels of operators
+               currently supported:
+                    electric dipoles: x, y, z
+        Output:
+               operator gradients V(p, q)[1] = <0|[E(p, q), V]|0>
+               in same order as args
+        """
+        if 'x' in args or 'y' in args or 'z' in args:
+            props = {k: v for k, v in zip('xyz', self.get_dipole())}
+        Da, Db = self.get_densities()
+        D = Da + Db
+        S = self.get_overlap()
+        mo = self.get_mo()
+
+        matrices = tuple(
+            mo.T@(S@D@props[p].T - props[p].T@D@S)@mo for p in args
+        )
+        gradients = tuple(self.mat2vec(m) for m in matrices)
+        return gradients
