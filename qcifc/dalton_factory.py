@@ -152,31 +152,6 @@ class DaltonFactory(QuantumChemistry):
             raise TypeError
         return u
 
-
-    def setup_trials(self, vectors, td=None, b=None, renormalize=True):
-        """
-        Set up initial trial vectors from a set of intial guesses
-        """
-        trials = []
-        for (op, freq), vec in vectors.items():
-            if td is not None:
-                v = vec/td[freq]
-            else:
-                v = vec
-            if numpy.linalg.norm(v) > SMALL:
-                trials.append(v)
-                if freq > SMALL:
-                    trials.append(swap(v))
-        new_trials = full.init(trials)
-        if b is not None:
-            new_trials = new_trials - b*b.T*new_trials
-        if trials and renormalize:
-            t = get_transform(new_trials)
-            truncated = new_trials*t
-            S12 = (truncated.T*truncated).invsqrt()
-            new_trials = truncated*S12
-        return new_trials
-
     def generate_new_trials(self, residuals, td, b):
         return self.setup_trials(
             vectors=residuals, td=td, b=b, renormalize=True
