@@ -14,10 +14,11 @@ ids = get_codes_ids()
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestLiH(TestQC):
 
+
     def test_get_orbhess(self, code):
         """Get diagonal orbital hessian"""
-        if 'get_orbital_diagonal' not in dir(code):
-            pytest.skip('not implemented')
+        self.skip_if_not_implemented('get_orbital_diagonal', code)
+        self.skip_open_shell(code)
         od = code.get_orbital_diagonal()
         npt.assert_allclose(
             od,
@@ -36,6 +37,7 @@ class TestLiH(TestQC):
     def test_get_s2_diagonal(self, code):
         """Get diagonal overlap hessian"""
         self.skip_if_not_implemented('get_overlap_diagonal', code)
+        self.skip_open_shell(code)
         sd = code.get_overlap_diagonal()
         lsd = len(sd)
         npt.assert_allclose(sd, [2.0]*(lsd//2) + [-2.0]*(lsd//2))
@@ -43,6 +45,7 @@ class TestLiH(TestQC):
     def test_get_rhs(self, code):
         """Get property gradient right-hand side"""
         self.skip_if_not_implemented('get_rhs', code)
+        self.skip_open_shell(code)
         rhs,  = code.get_rhs('z',)
         expected = [
               1.17073239e-01, -2.37864884e-16,  2.87393832e-16,
@@ -88,6 +91,7 @@ class TestLiH(TestQC):
         self.skip_if_not_implemented('initial_guess', code)
         self.skip_if_not_implemented('get_orbital_diagonal', code)
         self.skip_if_not_implemented('get_overlap_diagonal', code)
+        self.skip_open_shell(code)
         ops, freqs, expected = args
         initial_guess = code.initial_guess(ops, freqs)
         for op, freq in zip(ops, freqs):
@@ -133,6 +137,7 @@ class TestLiH(TestQC):
     )
     def test_lr(self, code, args):
         self.skip_if_not_implemented('lr', code)
+        self.skip_open_shell(code)
         aops, bops, freqs, expected = args
         lr = code.lr(aops, bops, freqs)
         for k, v in lr.items():

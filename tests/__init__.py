@@ -22,6 +22,12 @@ class TestQC:
         if method not in dir(code):
             pytest.skip('not implemented')
 
+    @staticmethod
+    def skip_open_shell(code):
+        if isinstance(code, codes['vlx']):
+            pytest.skip('open shell not implemented')
+
+
 def get_settings(case):
     test_root = pathlib.Path(__file__).parent
     test_dir = test_root/f'test_{case}.d'
@@ -43,6 +49,7 @@ def get_codes_settings(case):
         )
     )
     return codes_settings
+
 
 def get_codes_ids():
     return list(codes.keys())

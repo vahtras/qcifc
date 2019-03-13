@@ -158,6 +158,7 @@ class TestTS06(TestQC):
     )
     def test_lr(self, code, args):
         self.skip_if_not_implemented('lr', code)
+        self.skip_open_shell(code)
         aops, bops, freqs, expected = args
         lr = code.lr(aops, bops, freqs)
         for k, v in lr.items():

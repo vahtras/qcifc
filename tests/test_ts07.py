@@ -36,6 +36,7 @@ class TestTS07(TestQC):
     def test_get_s2_diagonal(self, code):
         """Get diagonal overlap hessian"""
         self.skip_if_not_implemented('get_overlap_diagonal', code)
+        self.skip_open_shell(code)
         sd = code.get_overlap_diagonal()
         expected = [1.]*9 + [2.]*36 + [1.]*4
         expected += [-1.]*9 + [-2.]*36 + [-1.]*4
@@ -44,6 +45,7 @@ class TestTS07(TestQC):
     def test_get_rhs(self, code):
         """Get property gradient right-hand side"""
         self.skip_if_not_implemented('get_rhs', code)
+        self.skip_open_shell(code)
         rhs,  = code.get_rhs('z',)
         expected = [
             0.02374939, -0.00507364, -0.21746464, -0.01346780, -0.06384615,
@@ -95,6 +97,7 @@ class TestTS07(TestQC):
     def test_initial_guess(self, code, args):
         """form paired trialvectors from rhs/orbdiag"""
         self.skip_if_not_implemented('initial_guess', code)
+        self.skip_open_shell(code)
         ops, freqs, expected = args
         initial_guess = code.initial_guess(ops, freqs)
         for op, freq in zip(ops, freqs):
@@ -118,6 +121,7 @@ class TestTS07(TestQC):
     )
     def test_lr(self, code, args):
         self.skip_if_not_implemented('lr', code)
+        self.skip_open_shell(code)
         aops, bops, freqs, expected = args
         lr = code.lr(aops, bops, freqs)
         for k, v in lr.items():

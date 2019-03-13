@@ -16,6 +16,7 @@ class TestTS04(TestQC):
 
     def test_get_orbhess(self, code):
         self.skip_if_not_implemented('get_orbital_diagonal', code)
+        self.skip_open_shell(code)
         """Get diagonal orbital hessian"""
         od = code.get_orbital_diagonal()
         npt.assert_allclose(
@@ -39,6 +40,7 @@ class TestTS04(TestQC):
     def test_get_s2_diagonal(self, code):
         """Get diagonal overlap hessian"""
         self.skip_if_not_implemented('get_overlap_diagonal', code)
+        self.skip_open_shell(code)
         sd = code.get_overlap_diagonal()
         expected = [1.]*9 + [2.]*45 + [1.]*5
         expected += [-1.]*9 + [-2.]*45 + [-1.]*5
@@ -47,6 +49,7 @@ class TestTS04(TestQC):
     def test_get_rhs(self, code):
         """Get property gradient right-hand side"""
         self.skip_if_not_implemented('get_rhs', code)
+        self.skip_open_shell(code)
         rhs,  = code.get_rhs('z',)
         z = np.array([
             -4.74839076e-02, -3.09070578e-02, -3.71710662e-01,
@@ -180,6 +183,7 @@ class TestTS04(TestQC):
         self.skip_if_not_implemented('initial_guess', code)
         self.skip_if_not_implemented('get_orbital_diagonal', code)
         self.skip_if_not_implemented('get_overlap_diagonal', code)
+        self.skip_open_shell(code)
         ops, freqs, expected = args
         initial_guess = code.initial_guess(ops, freqs)
         for op, freq in zip(ops, freqs):
@@ -203,6 +207,7 @@ class TestTS04(TestQC):
     )
     def test_lr(self, code, args):
         self.skip_if_not_implemented('lr', code)
+        self.skip_open_shell(code)
         aops, bops, freqs, expected = args
         lr = code.lr(aops, bops, freqs)
         for k, v in lr.items():
