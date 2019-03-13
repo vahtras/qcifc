@@ -208,6 +208,13 @@ class VeloxChem(QuantumChemistry):
         e2c = np.array(z + z)
         return e2c
 
+    def get_overlap_diagonal(self):
+        lz = len(self.get_excitations())
+        s2d = 2.0*np.ones(2*lz)
+        s2d[lz:] = -2.0
+        return s2d
+
+
     def get_rhs(self, *args):
         """
         Create right-hand sides of linear response equations

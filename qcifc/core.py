@@ -48,7 +48,7 @@ class QuantumChemistry(abc.ABC):
         dim = od.shape[0]
         ig = {}
         for op, grad in zip(ops, self.get_rhs(*ops)):
-            gn = grad.norm2()
+            gn = np.linalg.norm(grad)
             for w in freqs:
                 if gn < SMALL:
                     ig[(op, w)] = np.zeros(dim)

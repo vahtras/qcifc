@@ -211,7 +211,7 @@ class TestH2(TestQC):
     )
     def test_initial_guess(self, code, args):
         """form paired trialvectors from rhs/orbdiag"""
-        self.skip_if_not_implemented('get_initial_guess', code)
+        self.skip_if_not_implemented('initial_guess', code)
         self.skip_if_not_implemented('get_orbital_diagonal', code)
         self.skip_if_not_implemented('get_overlap_diagonal', code)
 
