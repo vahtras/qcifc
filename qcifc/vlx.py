@@ -322,3 +322,4 @@ class VeloxChem(QuantumChemistry):
                 gv[:, col] = -self.mat2vec(gmo)
 
         return gv
+

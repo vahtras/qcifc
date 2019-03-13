@@ -157,52 +157,13 @@ class DaltonFactory(QuantumChemistry):
             vectors=residuals, td=td, b=b, renormalize=True
         )
 
-    def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
-        from util.full import matrix
-
-        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        igs = self.initial_guess(ops=ops, freqs=freqs)
-        b = self.setup_trials(igs)
-        # if the set of trial vectors is null we return the initial guess
-        if not numpy.any(b):
-            return {k: v.view(matrix) for k, v in igs.items()}
-        e2b = self.e2n(b).view(matrix)
-        s2b = self.s2n(b).view(matrix)
-
-        od = self.get_orbital_diagonal()
-        sd = self.get_overlap_diagonal()
-        td = {w: od - w*sd for w in freqs}
-
-        solutions = {}
-        residuals = {}
-        for i in range(maxit):
-            for op, freq in igs:
-                v = V1[op]
-                n = b*((b.T*v)/(b.T*(e2b-freq*s2b)))
-                r = self.e2n(n)-freq*self.s2n(n) - v
-                solutions[(op, freq)] = n
-                residuals[(op, freq)] = r
-                print(f"{i+1} <<{op};{op}>>({freq})={-n&v:.6f} rn={r.norm2():.2e} ", end='')
-            print()
-            max_residual = max(r.norm2() for r in residuals.values())
-            if max_residual < threshold:
-                print("Converged")
-                break
-            new_trials = self.setup_trials(residuals, td=td, b=b)
-            b = bappend(b, new_trials)
-            new_e2b = self.e2n(new_trials).view(matrix)
-            new_s2b = self.s2n(new_trials).view(matrix)
-            e2b = bappend(e2b, new_e2b)
-            s2b = bappend(s2b, new_s2b)
-        return solutions
-
     def lr(self, aops, bops, freqs=(0,), **kwargs):
         v1 = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
         solutions = self.lr_solve(bops, freqs, **kwargs)
         lrs = {}
         for aop in aops:
             for bop, w in solutions:
-                lrs[(aop, bop, w)] = -v1[aop]&solutions[(bop, w)]
+                lrs[(aop, bop, w)] = -v1[aop] & solutions[(bop, w)]
         return lrs
 
     def response_dim(self):
