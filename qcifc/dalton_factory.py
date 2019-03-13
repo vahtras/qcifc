@@ -157,14 +157,6 @@ class DaltonFactory(QuantumChemistry):
             vectors=residuals, td=td, b=b, renormalize=True
         )
 
-    def lr(self, aops, bops, freqs=(0,), **kwargs):
-        v1 = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
-        solutions = self.lr_solve(bops, freqs, **kwargs)
-        lrs = {}
-        for aop in aops:
-            for bop, w in solutions:
-                lrs[(aop, bop, w)] = -v1[aop] & solutions[(bop, w)]
-        return lrs
 
     def response_dim(self):
         filename = os.path.join(self.get_workdir(), "SIRIFC")
