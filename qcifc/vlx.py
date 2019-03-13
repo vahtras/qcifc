@@ -69,7 +69,6 @@ class VeloxChem(QuantumChemistry):
 
         return np.array(z + y)
 
-
     def get_overlap(self):
         overlap_driver = vlx.OverlapIntegralsDriver(
             self.rank, self.size, self.comm
@@ -178,8 +177,8 @@ class VeloxChem(QuantumChemistry):
         ds = da - db
         dens = vlx.AODensityMatrix([dt, ds], denmat.rest)
         fock = vlx.AOFockMatrix(dens)
-        fock.set_fock_type(fockmat.restjk, 0)
-        fock.set_fock_type(fockmat.restk, 1)
+        fock.set_fock_type(fockmat.rgenjk, 0)
+        fock.set_fock_type(fockmat.rgenk, 1)
 
         eri_driver = vlx.ElectronRepulsionIntegralsDriver(
             self.rank, self.size, self.comm
@@ -189,8 +188,8 @@ class VeloxChem(QuantumChemistry):
         eri_driver.compute(fock, dens, mol, bas, screening, self.comm)
         fock.reduce_sum(self.rank, self.size, self.comm)
 
-        ft = fock.to_numpy(0)
-        fs = -fock.to_numpy(1)
+        ft = fock.to_numpy(0).T
+        fs = -fock.to_numpy(1).T
 
         fa = (ft + fs)/2
         fb = (ft - fs)/2
@@ -261,27 +260,7 @@ class VeloxChem(QuantumChemistry):
                 s2n_vecs[:, c] = - self.mat2vec(s2n_mo)
         return s2n_vecs
 
-    def _e2n(self, vecs):
-      first = False
-      if first:
-        vecs = np.array(vecs)
-        xv = [self.np2vlx(vecs)]
-
-        a2x = vlx.tdaexcidriver.TDASigmaVectorDriver(
-            self.rank, self.size, self.comm
-        )
-        eri_driver = vlx.ElectronRepulsionIntegralsDriver(
-            self.rank, self.size, self.comm
-        )
-
-        mol = self.task.molecule
-        bas = self.task.ao_basis
-        mo = self.scf_driver.mol_orbs
-        qq_data = eri_driver.compute(vlx.ericut.qq, 1.0e-12, mol, bas)
-        sigma_vecs = a2x.compute(xv, qq_data, mo,  mol, bas, self.comm)
-        e2n = [2*s.to_numpy() for s in sigma_vecs][0]
-        return np.array(e2n)
-      else:
+    def e2n(self, vecs):
         vecs = np.array(vecs)
 
         S = self.get_overlap()
@@ -292,23 +271,51 @@ class VeloxChem(QuantumChemistry):
         da, db = self.get_densities()
         mo = self.get_mo()
 
-        kN = self.vec2mat(vecs).T
-        kn = mo @ kN @ mo.T
+        if len(vecs.shape) == 1:
 
-        dak = kn.T@S@da - da@S@kn.T
-        dbk = kn.T@S@db - db@S@kn.T
 
-        self.set_densities(dak, dbk)
-        fak, fbk = self.get_two_el_fock()
+            kN = self.vec2mat(vecs).T
+            kn = mo @ kN @ mo.T
 
-        kfa = S@kn@fa - fa@kn@S
-        kfb = S@kn@fa - fa@kn@S
+            dak = kn.T@S@da - da@S@kn.T
+            dbk = kn.T@S@db - db@S@kn.T
 
-        fa = fak + kfa
-        fb = fbk + kfb
+            self.set_densities(dak, dbk)
+            fak, fbk = self.get_two_el_fock()
 
-        gao = S@(da@fa.T + db@fb.T) - (fa.T@da + fb.T@db)*S
-        gmo = mo.T @ gao @ mo
+            kfa = S@kn@fa - fa@kn@S
+            kfb = S@kn@fa - fa@kn@S
 
-        gv = - self.mat2vec(gmo)
+            fat = fak + kfa
+            fbt = fbk + kfb
+
+            gao = S@(da@fat.T + db@fbt.T) - (fat.T@da + fbt.T@db)@S
+            gmo = mo.T @ gao @ mo
+
+            gv = - self.mat2vec(gmo)
+        else:
+            gv = np.zeros(vecs.shape)
+            for col in range(vecs.shape[1]):
+                vec = vecs[:, col]
+
+                kN = self.vec2mat(vec).T
+                kn = mo @ kN @ mo.T
+
+                dak = kn.T@S@da - da@S@kn.T
+                dbk = kn.T@S@db - db@S@kn.T
+
+                self.set_densities(dak, dbk)
+                fak, fbk = self.get_two_el_fock()
+
+                kfa = S@kn@fa - fa@kn@S
+                kfb = S@kn@fa - fa@kn@S
+
+                fat = fak + kfa
+                fbt = fbk + kfb
+
+                gao = S@(da@fat.T + db@fbt.T) - (fat.T@da + fbt.T@db)@S
+                gmo = mo.T @ gao @ mo
+
+                gv[:, col] = -self.mat2vec(gmo)
+
         return gv

@@ -71,25 +71,34 @@ class TestH2(TestQC):
         npt.assert_allclose(da1, da)
         npt.assert_allclose(db1, db)
 
-    def test_get_two_fa(self, code):
+    @pytest.mark.parametrize(
+        'density_fock',
+        [
+            (
+                [[1., 0.], [0., 1.]],
+                [[1., 0.], [0., 0.]],
+                [[1.04701025, 0.44459112],
+                 [0.44459112, 0.8423992]],
+                [[1.34460081, 0.88918225],
+                 [0.88918225, 1.61700513]],
+            ),
+            (
+                [[0., 1.], [0., 0.]],
+                [[0., 0.], [1., 0.]],
+                [[0.44459112, 0.29759056],
+                 [0.02518623, 0.44459112]],
+                [[0.44459112, 0.02518623],
+                 [0.29759056, 0.44459112]],
+            ),
+        ]
+    )
+    def test_get_two_fa(self, code, density_fock):
         """Get alpha Fock matrix"""
-        code.run_scf()
-
-        da = np.array([[1., 0.], [0., 1.]])
-        db = np.array([[1., 0.], [0., 0.]])
-        faref = np.array([
-            [1.04701025, 0.44459112],
-            [0.44459112, 0.8423992]
-        ])
-
-        fbref = np.array([
-            [1.34460081, 0.88918225],
-            [0.88918225, 1.61700513]
-        ])
+        da, db, faref, fbref = [np.array(m) for m in density_fock]
         code.set_densities(da, db)
         fa, fb = code.get_two_el_fock()
-        npt.assert_allclose(fa, faref)
-        npt.assert_allclose(fb, fbref)
+        npt.assert_allclose(fa, faref, atol=1e-8)
+        npt.assert_allclose(fb, fbref, atol=1e-8)
 
     def test_vec2mat(self, code):
         self.skip_if_not_implemented('vec2mat', code)
@@ -124,7 +133,9 @@ class TestH2(TestQC):
         'trials',
         [
             ([1, 0], [1.89681370, -0.36242092]),
+            ([[1], [0]], [[1.89681370], [-0.36242092]]),
             ([0, 1], [-0.36242092, 1.89681370]),
+            ([[0], [1]], [[-0.36242092], [1.89681370]]),
             ([[1, 0],
               [0, 1]],
              [[1.89681370, -0.36242092],
