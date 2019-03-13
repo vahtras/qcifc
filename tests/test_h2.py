@@ -95,8 +95,7 @@ class TestH2(TestQC):
     def test_get_two_fa(self, code, density_fock):
         """Get alpha Fock matrix"""
         da, db, faref, fbref = [np.array(m) for m in density_fock]
-        code.set_densities(da, db)
-        fa, fb = code.get_two_el_fock()
+        fa, fb = code.get_two_el_fock(da, db)
         npt.assert_allclose(fa, faref, atol=1e-8)
         npt.assert_allclose(fb, fbref, atol=1e-8)
 

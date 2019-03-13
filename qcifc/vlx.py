@@ -159,7 +159,7 @@ class VeloxChem(QuantumChemistry):
             db = self.scf_driver.density.beta_to_numpy(0)
         return da, db
 
-    def get_two_el_fock(self, densities=None):
+    def get_two_el_fock(self, da, db):
         from veloxchem.veloxchemlib import denmat, fockmat
         master_node = (self.rank == vlx.mpi_master())
         if master_node:
@@ -171,8 +171,6 @@ class VeloxChem(QuantumChemistry):
         mol.broadcast(self.rank, self.comm)
         bas.broadcast(self.rank, self.comm)
 
-        if densities is None:
-            da, db = self.get_densities()
         dt = da + db
         ds = da - db
         dens = vlx.AODensityMatrix([dt, ds], denmat.rest)
@@ -271,11 +269,11 @@ class VeloxChem(QuantumChemistry):
         vecs = np.array(vecs)
 
         S = self.get_overlap()
-        fa, fb = self.get_two_el_fock()
+        da, db = self.get_densities()
+        fa, fb = self.get_two_el_fock(da, db)
         h = self.get_one_el_hamiltonian()
         fa += h
         fb += h
-        da, db = self.get_densities()
         mo = self.get_mo()
 
         if len(vecs.shape) == 1:
@@ -287,8 +285,7 @@ class VeloxChem(QuantumChemistry):
             dak = kn.T@S@da - da@S@kn.T
             dbk = kn.T@S@db - db@S@kn.T
 
-            self.set_densities(dak, dbk)
-            fak, fbk = self.get_two_el_fock()
+            fak, fbk = self.get_two_el_fock(dak, dbk)
 
             kfa = S@kn@fa - fa@kn@S
             kfb = S@kn@fa - fa@kn@S
@@ -311,8 +308,7 @@ class VeloxChem(QuantumChemistry):
                 dak = kn.T@S@da - da@S@kn.T
                 dbk = kn.T@S@db - db@S@kn.T
 
-                self.set_densities(dak, dbk)
-                fak, fbk = self.get_two_el_fock()
+                fak, fbk = self.get_two_el_fock(dak, dbk)
 
                 kfa = S@kn@fa - fa@kn@S
                 kfb = S@kn@fa - fa@kn@S

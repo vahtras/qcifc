@@ -65,10 +65,10 @@ class DaltonFactory(QuantumChemistry):
             )
         return rst.cmo.unblock()
 
-    def get_two_el_fock(self):
+    def get_two_el_fock(self, da, db):
         """Get focks"""
         return two.core.fockab(
-            self.get_densities(),
+            (da, db),
             filename=os.path.join(self.get_workdir(), "AOTWOINT"),
             f2py=False
             )
