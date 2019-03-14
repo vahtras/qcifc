@@ -75,16 +75,9 @@ class VeloxChem(QuantumChemistry):
         overlap_driver = vlx.OverlapIntegralsDriver(
             self.rank, self.size, self.comm
         )
-        master_node = (self.rank == vlx.mpi_master())
-        if master_node:
-            mol = vlx.Molecule.read_xyz(self.xyz)
-            bas = vlx.MolecularBasis.read(mol, self.basis)
-        else:
-            mol = vlx.Molecule()
-            bas = vlx.MolecularBasis()
 
-        mol.broadcast(self.rank, self.comm)
-        bas.broadcast(self.rank, self.comm)
+        mol = self.task.molecule
+        bas = self.task.ao_basis
 
         S = overlap_driver.compute(mol, bas, self.comm)
         return S.to_numpy()
@@ -93,16 +86,9 @@ class VeloxChem(QuantumChemistry):
         dipole_driver = vlx.ElectricDipoleIntegralsDriver(
             self.rank, self.size, self.comm
         )
-        master_node = (self.rank == vlx.mpi_master())
-        if master_node:
-            mol = vlx.Molecule.read_xyz(self.xyz)
-            bas = vlx.MolecularBasis.read(mol, self.basis)
-        else:
-            mol = vlx.Molecule()
-            bas = vlx.MolecularBasis()
 
-        mol.broadcast(self.rank, self.comm)
-        bas.broadcast(self.rank, self.comm)
+        mol = self.task.molecule
+        bas = self.task.ao_basis
 
         D = dipole_driver.compute(mol, bas, self.comm)
         return D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
@@ -114,16 +100,9 @@ class VeloxChem(QuantumChemistry):
         potential_driver = vlx.NuclearPotentialIntegralsDriver(
             self.rank, self.size, self.comm
         )
-        master_node = (self.rank == vlx.mpi_master())
-        if master_node:
-            mol = vlx.Molecule.read_xyz(self.xyz)
-            bas = vlx.MolecularBasis.read(mol, self.basis)
-        else:
-            mol = vlx.Molecule()
-            bas = vlx.MolecularBasis()
 
-        mol.broadcast(self.rank, self.comm)
-        bas.broadcast(self.rank, self.comm)
+        mol = self.task.molecule
+        bas = self.task.ao_basis
 
         T = kinetic_driver.compute(mol, bas, self.comm).to_numpy()
         V = potential_driver.compute(mol, bas, self.comm).to_numpy()
@@ -131,16 +110,18 @@ class VeloxChem(QuantumChemistry):
         return T-V
 
     def get_nuclear_repulsion(self):
-        mol = vlx.Molecule.read_xyz(self.xyz)
+        mol = self.task.molecule
         return mol.nuclear_repulsion_energy()
 
     def run_scf(self, mol):
         self.scf_driver = vlx.ScfRestrictedDriver()
         inp = str(f'{mol}.inp')
         out = str(f'{mol}.out')
+        cwd = os.getcwd()
         os.chdir(self.get_workdir())
         self.task = vlx.MpiTask((inp, out), self.comm)
         self.scf_driver.compute_task(self.task)
+        os.chdir(cwd)
 
     def get_mo(self):
         mos = self.scf_driver.mol_orbs.alpha_to_numpy()
@@ -163,15 +144,9 @@ class VeloxChem(QuantumChemistry):
 
     def get_two_el_fock(self, da, db):
         from veloxchem.veloxchemlib import denmat, fockmat
-        master_node = (self.rank == vlx.mpi_master())
-        if master_node:
-            mol = vlx.Molecule.read_xyz(self.xyz)
-            bas = vlx.MolecularBasis.read(mol, self.basis)
-        else:
-            mol = vlx.Molecule()
-            bas = vlx.MolecularBasis()
-        mol.broadcast(self.rank, self.comm)
-        bas.broadcast(self.rank, self.comm)
+
+        mol = self.task.molecule
+        bas = self.task.ao_basis
 
         dt = da + db
         ds = da - db

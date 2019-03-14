@@ -175,11 +175,13 @@ class DaltonFactory(QuantumChemistry):
         return excitations
 
     def run_scf(self, mol):
+        cwd = os.getcwd()
         os.chdir(self.get_workdir())
         subprocess.call(
             ['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', mol]
         )
         subprocess.call(['tar', 'xvfz', f'hf_{mol}.tar.gz'])
+        os.chdir(cwd)
 
     def cleanup_scf(self):
         subprocess.call(
