@@ -360,6 +360,9 @@ class TestH2(TestQC):
         for k, v in pp.items():
             npt.assert_allclose(v, expected[k])
 
+    def test_get_excitations(self, code):
+        assert list(code.get_excitations()) == [(0, 1)]
+
     def test_excitation_energies(self, code):
         self.skip_if_not_implemented('excitation_energies', code)
 

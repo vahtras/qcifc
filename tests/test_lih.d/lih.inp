@@ -12,6 +12,6 @@ charge: 0
 multiplicity: 1
 units: angstrom
 xyz:  
+H 0.0  0.0  1.637242
 Li 0.0  0.0  0.0
-H 0.0  0.0  0.74
 @end 

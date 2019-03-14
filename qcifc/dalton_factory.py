@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-import numpy
+import numpy as np
 
 from daltools import one, sirrst, sirifc, prop, rspvec
 from dalmisc import oli
@@ -98,12 +98,12 @@ class DaltonFactory(QuantumChemistry):
 
     def get_orbital_diagonal(self, filename=None):
         od = self._sirifc(filename).orbdiag
-        return numpy.append(od, od)
+        return np.append(od, od)
 
     def get_overlap_diagonal(self, filename=None):
         ifc = self._sirifc(filename)
         lsd = ifc.nwopt
-        sd = numpy.ones((2, lsd))
+        sd = np.ones((2, lsd))
         for i in (0, 1):
             sd[i, ifc.nisht*ifc.nasht: ifc.nisht*(ifc.norbt - ifc.nisht)] *= 2
         sd[1, :] *= -1
@@ -122,12 +122,12 @@ class DaltonFactory(QuantumChemistry):
 
     def mat2vec(self, mat):
         ifc = self._sirifc()
-        mat = rspvec.tovec(numpy.array(mat), ifc)
+        mat = rspvec.tovec(np.array(mat), ifc)
         return mat
 
     def e2n(self, trial):
-        b = numpy.array(trial)
-        u = numpy.ndarray(b.shape)
+        b = np.array(trial)
+        u = np.ndarray(b.shape)
         if len(b.shape) == 1:
             u = oli.e2n(b, tmpdir=self.get_workdir())  # .reshape(b.shape)
         elif len(b.shape) == 2:
@@ -139,8 +139,8 @@ class DaltonFactory(QuantumChemistry):
         return u
 
     def s2n(self, trial):
-        b = numpy.array(trial)
-        u = numpy.ndarray(b.shape)
+        b = np.array(trial)
+        u = np.ndarray(b.shape)
 
         if len(b.shape) == 1:
             u = oli.s2n(b, tmpdir=self.get_workdir())
@@ -168,6 +168,11 @@ class DaltonFactory(QuantumChemistry):
 
     #def excitation_energies(*args, **kwargs):
         #pass
+
+    def get_excitations(self):
+        ifc = self._sirifc()
+        excitations = list(rspvec.jwop(ifc))
+        return excitations
 
     def run_scf(self):
         os.chdir(self.get_workdir())
@@ -205,10 +210,10 @@ class DaltonFactoryDummy(DaltonFactory):
 
     def get_overlap_diagonal(self, filename=None):
         n = self.response_dim()
-        sd = numpy.array(
+        sd = np.array(
             [
                 oli.s2n(c, tmpdir=self.get_workdir())
-                for c in numpy.eye(n)
+                for c in np.eye(n)
             ]
         ).diagonal()
         return sd
@@ -218,10 +223,10 @@ class DaltonFactoryDummy(DaltonFactory):
             filename = os.path.join(self.get_workdir(), "SIRIFC")
         ifc = sirifc.SirIfc(filename)
         n = 2*ifc.nwopt
-        e2_diagonal = numpy.array(
+        e2_diagonal = np.array(
             [
                 oli.e2n(c, tmpdir=self.get_workdir())
-                for c in numpy.eye(n)
+                for c in np.eye(n)
             ]
         ).diagonal()
         return e2_diagonal
@@ -230,8 +235,8 @@ class DaltonFactoryDummy(DaltonFactory):
         filename = os.path.join(self.get_workdir(), "SIRIFC")
         ifc = sirifc.SirIfc(filename)
         dim = 2*ifc.nwopt
-        E2 = full.init([self.e2n(i) for i in numpy.eye(dim)])
-        S2 = full.init([self.s2n(i) for i in numpy.eye(dim)])
+        E2 = full.init([self.e2n(i) for i in np.eye(dim)])
+        S2 = full.init([self.s2n(i) for i in np.eye(dim)])
         return E2, S2
 
     def excitation_energies(self, n_states):
@@ -244,6 +249,6 @@ class DaltonFactoryDummy(DaltonFactory):
         _, Xn = (E2/S2).eigvec()
         dim = len(E2)
         for i in range(dim//2, dim//2 + n_states):
-            norm = numpy.sqrt(Xn[:, i].T*S2*Xn[:, i])
+            norm = np.sqrt(Xn[:, i].T*S2*Xn[:, i])
             Xn[:, i] /= norm
         return Xn[:, dim//2: dim//2 + n_states]

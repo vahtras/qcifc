@@ -1,4 +1,5 @@
 import os
+import itertools
 
 from mpi4py import MPI
 import numpy as np
@@ -47,8 +48,8 @@ class VeloxChem(QuantumChemistry):
         cols = kz.number_of_columns() + ky.number_of_columns()
 
         kzy = np.zeros((rows, cols))
-        kzy[:kz.number_of_rows(), kz.number_of_columns():] = kz.to_numpy()
-        kzy[ky.number_of_rows():, :ky.number_of_columns()] = ky.to_numpy()
+        kzy[:kz.number_of_rows(), ky.number_of_columns():] = kz.to_numpy()
+        kzy[kz.number_of_rows():, :ky.number_of_columns()] = ky.to_numpy()
 
         return kzy
 
@@ -58,10 +59,11 @@ class VeloxChem(QuantumChemistry):
         xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
         cre = xv.bra_unique_indexes()
         ann = xv.ket_unique_indexes()
-        return [(i, j) for i, j in zip(cre, ann)]
+        excitations = itertools.product(cre, ann)
+        return excitations
 
     def mat2vec(self, mat):
-        excitations = self.get_excitations()
+        excitations = list(self.get_excitations())
 
         m = np.array(mat)
         z = [m[i, j] for i, j in excitations]
@@ -195,19 +197,14 @@ class VeloxChem(QuantumChemistry):
         return fa, fb
 
     def get_orbital_diagonal(self):
-        nocc = self.task.molecule.number_of_electrons() // 2
-        norb = self.scf_driver.mol_orbs.number_mos()
-        xv = vlx.ExcitationVector(szblock.aa, 0, nocc, nocc, norb, True)
-        cre = xv.bra_unique_indexes()
-        ann = xv.ket_unique_indexes()
 
         orben = self.scf_driver.mol_orbs.ea_to_numpy()
-        z = [4*(orben[j] - orben[i]) for i, j in zip(cre, ann)]
+        z = [4*(orben[j] - orben[i]) for i, j in self.get_excitations()]
         e2c = np.array(z + z)
         return e2c
 
     def get_overlap_diagonal(self):
-        lz = len(self.get_excitations())
+        lz = len(list(self.get_excitations()))
         s2d = 2.0*np.ones(2*lz)
         s2d[lz:] = -2.0
         return s2d
