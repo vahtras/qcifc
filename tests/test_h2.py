@@ -50,7 +50,7 @@ class TestH2(TestQC):
 
     def test_get_mo(self, code):
         """Read MO coefficients"""
-        code.run_scf()
+        code.run_scf(CASE)
         cmo = code.get_mo()
         expected = [
              [.54884227, -1.212451936],
@@ -63,7 +63,6 @@ class TestH2(TestQC):
 
     def test_set_get_dens_a(self, code):
         """Set density test"""
-        code.run_scf()
         da = [[1., 0.], [0., 1.]]
         db = [[1., 0.], [0., 0.]]
         code.set_densities(da, db)

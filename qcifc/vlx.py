@@ -134,10 +134,10 @@ class VeloxChem(QuantumChemistry):
         mol = vlx.Molecule.read_xyz(self.xyz)
         return mol.nuclear_repulsion_energy()
 
-    def run_scf(self):
+    def run_scf(self, mol):
         self.scf_driver = vlx.ScfRestrictedDriver()
-        inp = str(self.inp)
-        out = str(self.out)
+        inp = str(f'{mol}.inp')
+        out = str(f'{mol}.out')
         os.chdir(self.get_workdir())
         self.task = vlx.MpiTask((inp, out), self.comm)
         self.scf_driver.compute_task(self.task)

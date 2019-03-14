@@ -174,12 +174,12 @@ class DaltonFactory(QuantumChemistry):
         excitations = list(rspvec.jwop(ifc))
         return excitations
 
-    def run_scf(self):
+    def run_scf(self, mol):
         os.chdir(self.get_workdir())
         subprocess.call(
-            ['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', self.case]
+            ['dalton', '-get', 'AOPROPER AOONEINT AOTWOINT', 'hf', mol]
         )
-        subprocess.call(['tar', 'xvfz', f'hf_{self.case}.tar.gz'])
+        subprocess.call(['tar', 'xvfz', f'hf_{mol}.tar.gz'])
 
     def cleanup_scf(self):
         subprocess.call(
