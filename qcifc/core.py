@@ -1,6 +1,7 @@
 """Abstract interfact to QM codes"""
 import abc
 import numpy as np
+import pandas as pd
 from util import full
 
 SMALL = 1e-10
@@ -46,7 +47,7 @@ class QuantumChemistry(abc.ABC):
         od = self.get_orbital_diagonal()
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
-        ig = {}
+        ig = pd.DataFrame()
         for op, grad in zip(ops, self.get_rhs(*ops)):
             gn = np.linalg.norm(grad)
             for w in freqs:
@@ -62,7 +63,8 @@ class QuantumChemistry(abc.ABC):
         Set up initial trial vectors from a set of intial guesses
         """
         trials = []
-        for (op, freq), vec in vectors.items():
+        for (op, freq) in vectors:
+            vec = vectors[(op, freq)].values
             if td is not None:
                 v = vec/td[freq]
             else:
@@ -84,12 +86,12 @@ class QuantumChemistry(abc.ABC):
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
         from util.full import matrix
 
-        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        igs = self.initial_guess(ops=ops, freqs=freqs)
+        V1 = pd.DataFrame({op: v for op, v in zip(ops, self.get_rhs(*ops))})
+        igs = pd.DataFrame(self.initial_guess(ops=ops, freqs=freqs))
         b = self.setup_trials(igs)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
-            return {k: v.view(matrix) for k, v in igs.items()}
+            return igs
         e2b = self.e2n(b).view(matrix)
         s2b = self.s2n(b).view(matrix)
 
@@ -97,24 +99,35 @@ class QuantumChemistry(abc.ABC):
         sd = self.get_overlap_diagonal()
         td = {w: od - w*sd for w in freqs}
 
-        solutions = {}
-        residuals = {}
+        solutions = pd.DataFrame()
+        residuals = pd.DataFrame()
 
         for i in range(maxit):
+            # next solution
             for op, freq in igs:
-                v = V1[op].view(matrix)
+                v = V1[op].values.view(matrix)
                 n = b*((b.T*v)/(b.T*(e2b-freq*s2b)))
-                r = self.e2n(n)-freq*self.s2n(n) - v
                 solutions[(op, freq)] = n
+            e2nn = pd.DataFrame(
+                self.e2n(solutions.values), columns=solutions.columns
+            )
+            s2nn = pd.DataFrame(
+                self.s2n(solutions.values), columns=solutions.columns
+            )
+            # next residual
+            for op, freq in igs:
+                v = V1[op].values.view(matrix)
+                n = solutions[(op, freq)]
+                r = e2nn[(op, freq)] - freq*s2nn[(op, freq)] - v
                 residuals[(op, freq)] = r
                 nv = np.dot(n, v)
-                rn = r.norm2()
+                rn = np.linalg.norm(r)
                 print(
                     f"{i+1} <<{op};{op}>>({freq})={-nv:.6f} rn={rn:.2e} ",
                     end=''
                 )
             print()
-            max_residual = max(r.norm2() for r in residuals.values())
+            max_residual = max(np.linalg.norm(residuals[r]) for r in residuals)
             if max_residual < threshold:
                 print("Converged")
                 break

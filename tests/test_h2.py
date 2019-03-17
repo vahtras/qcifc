@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pandas as pd
 import numpy.testing as npt
 
 from . import TestQC, get_codes_settings, get_codes_ids
@@ -294,10 +295,10 @@ class TestH2(TestQC):
         self.skip_if_not_implemented('setup_trials', code)
 
         initial_guesses, expected = args
-        ig = {
+        ig = pd.DataFrame({
             key: np.array(vector)
             for key, vector in initial_guesses.items()
-        }
+        })
         b = code.setup_trials(ig, renormalize=False)
         npt.assert_allclose(b.T, expected, rtol=1e-5)
 

@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from util import full
 
 from . import TestQC, get_codes_settings, get_codes_ids
 
