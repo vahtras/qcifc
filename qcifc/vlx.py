@@ -5,6 +5,7 @@ from mpi4py import MPI
 import numpy as np
 import veloxchem as vlx
 from veloxchem.veloxchemlib import szblock
+from veloxchem.veloxchemlib import denmat, fockmat
 
 from .core import QuantumChemistry
 
@@ -142,12 +143,13 @@ class VeloxChem(QuantumChemistry):
             db = self.scf_driver.density.beta_to_numpy(0)
         return da, db
 
-    def get_two_el_fock(self, da, db):
-        from veloxchem.veloxchemlib import denmat, fockmat
+    def get_two_el_fock(self, *dab):
 
         mol = self.task.molecule
         bas = self.task.ao_basis
 
+        assert len(dab) == 1
+        da, db = dab[0] # for now
         dt = da + db
         ds = da - db
         dens = vlx.AODensityMatrix([dt, ds], denmat.rest)
@@ -169,7 +171,7 @@ class VeloxChem(QuantumChemistry):
         fa = (ft + fs)/2
         fb = (ft - fs)/2
 
-        return fa, fb
+        return ((fa, fb),)
 
     def get_orbital_diagonal(self):
 
@@ -242,7 +244,7 @@ class VeloxChem(QuantumChemistry):
 
         S = self.get_overlap()
         da, db = self.get_densities()
-        fa, fb = self.get_two_el_fock(da, db)
+        (fa, fb), = self.get_two_el_fock((da, db),)
         h = self.get_one_el_hamiltonian()
         fa += h
         fb += h
@@ -257,7 +259,7 @@ class VeloxChem(QuantumChemistry):
             dak = kn.T@S@da - da@S@kn.T
             dbk = kn.T@S@db - db@S@kn.T
 
-            fak, fbk = self.get_two_el_fock(dak, dbk)
+            (fak, fbk), = self.get_two_el_fock((dak, dbk),)
 
             kfa = S@kn@fa - fa@kn@S
             kfb = S@kn@fa - fa@kn@S
@@ -280,7 +282,7 @@ class VeloxChem(QuantumChemistry):
                 dak = kn.T@S@da - da@S@kn.T
                 dbk = kn.T@S@db - db@S@kn.T
 
-                fak, fbk = self.get_two_el_fock(dak, dbk)
+                (fak, fbk), = self.get_two_el_fock((dak, dbk),)
 
                 kfa = S@kn@fa - fa@kn@S
                 kfb = S@kn@fa - fa@kn@S

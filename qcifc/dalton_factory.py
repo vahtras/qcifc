@@ -3,8 +3,7 @@ import subprocess
 
 import numpy as np
 
-from daltools import one, sirrst, sirifc, prop, rspvec
-from dalmisc import oli
+from daltools import one, sirrst, sirifc, prop, rspvec, oli
 import two.core
 import two.vb
 from util import full
@@ -65,13 +64,14 @@ class DaltonFactory(QuantumChemistry):
             )
         return rst.cmo.unblock()
 
-    def get_two_el_fock(self, da, db):
+    def get_two_el_fock(self, *dab):
         """Get focks"""
-        return two.core.fockab(
-            (da, db),
+        fab =  two.core.fockab(
+            *dab,
             filename=os.path.join(self.get_workdir(), "AOTWOINT"),
             f2py=False
             )
+        return fab
 
     def get_two_el_right_hessian(self, d_am, delta, filename=None):
         """Calculate <K|H|d2L>"""
