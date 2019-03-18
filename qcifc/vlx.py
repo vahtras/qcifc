@@ -21,6 +21,9 @@ class VeloxChem(QuantumChemistry):
         self.xyz = kwargs.get('xyz')
         self.inp = kwargs.get('inp')
         self.out = kwargs.get('out')
+        self._fock = None
+        self._overlap = None
+        self._dipoles = None
 
     def is_master(self):
         return self.rank == vlx.mpi_master()
@@ -73,6 +76,9 @@ class VeloxChem(QuantumChemistry):
         return np.array(z + y)
 
     def get_overlap(self):
+        if self._overlap is not None:
+            return self._overlap
+
         overlap_driver = vlx.OverlapIntegralsDriver(
             self.rank, self.size, self.comm
         )
@@ -81,9 +87,14 @@ class VeloxChem(QuantumChemistry):
         bas = self.task.ao_basis
 
         S = overlap_driver.compute(mol, bas, self.comm)
-        return S.to_numpy()
+        self._overlap = S.to_numpy()
+
+        return self._overlap
 
     def get_dipole(self):
+        if self._dipoles is not None:
+            return self._dipoles
+
         dipole_driver = vlx.ElectricDipoleIntegralsDriver(
             self.rank, self.size, self.comm
         )
@@ -92,7 +103,8 @@ class VeloxChem(QuantumChemistry):
         bas = self.task.ao_basis
 
         D = dipole_driver.compute(mol, bas, self.comm)
-        return D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
+        self._dipoles =  D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
+        return self._dipoles
 
     def get_one_el_hamiltonian(self):
         kinetic_driver = vlx.KineticEnergyIntegralsDriver(
@@ -247,18 +259,25 @@ class VeloxChem(QuantumChemistry):
                 s2n_vecs[:, c] = - self.mat2vec(s2n_mo)
         return s2n_vecs
 
+    def get_fock(self):
+        if self._fock is None:
+            da, db = self.get_densities()
+            (fa, fb), = self.get_two_el_fock((da, db),)
+            h = self.get_one_el_hamiltonian()
+            fa += h
+            fb += h
+            self._fock = (fa, fb)
+        return self._fock
+
     def e2n(self, vecs):
         vecs = np.array(vecs)
 
         S = self.get_overlap()
         da, db = self.get_densities()
-        (fa, fb), = self.get_two_el_fock((da, db),)
-        h = self.get_one_el_hamiltonian()
-        fa += h
-        fb += h
+        fa, fb = self.get_fock()
         mo = self.get_mo()
 
-        if len(vecs.shape) == 1:
+        if False:  # len(vecs.shape) == 1:
 
 
             kN = self.vec2mat(vecs).T
