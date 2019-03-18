@@ -99,6 +99,12 @@ class TestH2(TestQC):
         npt.assert_allclose(fa, faref, atol=1e-8)
         npt.assert_allclose(fb, fbref, atol=1e-8)
 
+        (fa1, fb1), (fb2, fa2) = code.get_two_el_fock((da, db), (db, da))
+        npt.assert_allclose(fa1, faref, atol=1e-8)
+        npt.assert_allclose(fa2, faref, atol=1e-8)
+        npt.assert_allclose(fb1, fbref, atol=1e-8)
+        npt.assert_allclose(fb2, fbref, atol=1e-8)
+
     def test_vec2mat(self, code):
         self.skip_if_not_implemented('vec2mat', code)
         vec = [1.0, 0.5]

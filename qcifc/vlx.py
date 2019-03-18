@@ -143,19 +143,23 @@ class VeloxChem(QuantumChemistry):
             db = self.scf_driver.density.beta_to_numpy(0)
         return da, db
 
-    def get_two_el_fock(self, *dab):
+    def get_two_el_fock(self, *dabs):
 
         mol = self.task.molecule
         bas = self.task.ao_basis
 
-        assert len(dab) == 1
-        da, db = dab[0] # for now
-        dt = da + db
-        ds = da - db
-        dens = vlx.AODensityMatrix([dt, ds], denmat.rest)
+        dts = []
+        for dab in dabs:
+            da, db = dab
+            dt = da + db
+            ds = da - db
+            dts.append(dt)
+            dts.append(ds)
+        dens = vlx.AODensityMatrix(dts, denmat.rest)
         fock = vlx.AOFockMatrix(dens)
-        fock.set_fock_type(fockmat.rgenjk, 0)
-        fock.set_fock_type(fockmat.rgenk, 1)
+        for i in range(0, 2*len(dabs), 2):
+            fock.set_fock_type(fockmat.rgenjk, i)
+            fock.set_fock_type(fockmat.rgenk, i+1)
 
         eri_driver = vlx.ElectronRepulsionIntegralsDriver(
             self.rank, self.size, self.comm
@@ -165,13 +169,17 @@ class VeloxChem(QuantumChemistry):
         eri_driver.compute(fock, dens, mol, bas, screening, self.comm)
         fock.reduce_sum(self.rank, self.size, self.comm)
 
-        ft = fock.to_numpy(0).T
-        fs = -fock.to_numpy(1).T
+        fabs = []
+        for i in range(0, 2*len(dabs), 2):
+            ft = fock.to_numpy(i).T
+            fs = -fock.to_numpy(i+1).T
 
-        fa = (ft + fs)/2
-        fb = (ft - fs)/2
+            fa = (ft + fs)/2
+            fb = (ft - fs)/2
 
-        return ((fa, fb),)
+            fabs.append((fa, fb))
+
+        return tuple(fabs)
 
     def get_orbital_diagonal(self):
 
@@ -273,6 +281,10 @@ class VeloxChem(QuantumChemistry):
             gv = - self.mat2vec(gmo)
         else:
             gv = np.zeros(vecs.shape)
+
+            dks = []
+            kns = []
+
             for col in range(vecs.shape[1]):
                 vec = vecs[:, col]
 
@@ -282,10 +294,16 @@ class VeloxChem(QuantumChemistry):
                 dak = kn.T@S@da - da@S@kn.T
                 dbk = kn.T@S@db - db@S@kn.T
 
-                (fak, fbk), = self.get_two_el_fock((dak, dbk),)
+                dks.append((dak, dbk))
+                kns.append(kn)
+
+            dks = tuple(dks)
+            fks = self.get_two_el_fock(*dks)
+
+            for col, (kn, (fak, fbk)) in enumerate(zip(kns, fks)):
 
                 kfa = S@kn@fa - fa@kn@S
-                kfb = S@kn@fa - fa@kn@S
+                kfb = S@kn@fb - fb@kn@S
 
                 fat = fak + kfa
                 fbt = fbk + kfb
