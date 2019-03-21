@@ -103,7 +103,7 @@ class VeloxChem(QuantumChemistry):
         bas = self.task.ao_basis
 
         D = dipole_driver.compute(mol, bas, self.comm)
-        self._dipoles =  D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
+        self._dipoles = D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
         return self._dipoles
 
     def get_one_el_hamiltonian(self):
@@ -126,8 +126,9 @@ class VeloxChem(QuantumChemistry):
         mol = self.task.molecule
         return mol.nuclear_repulsion_energy()
 
-    def run_scf(self, mol):
+    def run_scf(self, mol, conv_thresh=1e-6):
         self.scf_driver = vlx.ScfRestrictedDriver()
+        self.scf_driver.conv_thresh = conv_thresh
         inp = str(f'{mol}.inp')
         out = str(f'{mol}.out')
         cwd = os.getcwd()
@@ -206,7 +207,6 @@ class VeloxChem(QuantumChemistry):
         s2d[lz:] = -2.0
         return s2d
 
-
     def get_rhs(self, *args):
         """
         Create right-hand sides of linear response equations
@@ -279,7 +279,6 @@ class VeloxChem(QuantumChemistry):
 
         if False:  # len(vecs.shape) == 1:
 
-
             kN = self.vec2mat(vecs).T
             kn = mo @ kN @ mo.T
 
@@ -333,4 +332,3 @@ class VeloxChem(QuantumChemistry):
                 gv[:, col] = -self.mat2vec(gmo)
 
         return gv
-

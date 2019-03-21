@@ -101,19 +101,31 @@ class QuantumChemistry(abc.ABC):
 
         solutions = pd.DataFrame()
         residuals = pd.DataFrame()
+        e2nn = pd.DataFrame()
+        relative_residual_norm = pd.Series(index=igs.columns)
+
+
+        for op, freq in igs:
+            print(
+                f"it  <<{op};{op}>>{freq}     rn      nn  |", end=''
+            )
+        print()
 
         for i in range(maxit):
             # next solution
             for op, freq in igs:
                 v = V1[op].values.view(matrix)
-                n = b*((b.T*v)/(b.T*(e2b-freq*s2b)))
-                solutions[(op, freq)] = n
-            e2nn = pd.DataFrame(
-                self.e2n(solutions.values), columns=solutions.columns
-            )
+                reduced_solution = (b.T*v)/(b.T*(e2b-freq*s2b))
+                solutions[(op, freq)] = b*reduced_solution
+                e2nn[(op, freq)] = e2b*reduced_solution
+
+#           e2nn = pd.DataFrame(
+#               self.e2n(solutions.values), columns=solutions.columns
+#           )
             s2nn = pd.DataFrame(
                 self.s2n(solutions.values), columns=solutions.columns
             )
+
             # next residual
             for op, freq in igs:
                 v = V1[op].values.view(matrix)
@@ -122,12 +134,14 @@ class QuantumChemistry(abc.ABC):
                 residuals[(op, freq)] = r
                 nv = np.dot(n, v)
                 rn = np.linalg.norm(r)
+                nn = np.linalg.norm(n)
+                relative_residual_norm[(op, freq)] = rn / nn
                 print(
-                    f"{i+1} <<{op};{op}>>({freq})={-nv:.6f} rn={rn:.2e} ",
+                    f"{i+1} {-nv:.6f} {rn:.2e} {nn:.2e}|",
                     end=''
                 )
             print()
-            max_residual = max(np.linalg.norm(residuals[r]) for r in residuals)
+            max_residual = max(relative_residual_norm)
             if max_residual < threshold:
                 print("Converged")
                 break
