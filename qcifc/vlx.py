@@ -177,8 +177,8 @@ class VeloxChem(QuantumChemistry):
         eri_driver = vlx.ElectronRepulsionIntegralsDriver(
             self.rank, self.size, self.comm
         )
-        screening = eri_driver.compute(vlx.ericut.qqden, 1.0e-12, mol, bas)
-        eri_driver.compute(vlx.ericut.qqden, 1.0e-12, mol, bas)
+        screening = eri_driver.compute(vlx.ericut.qqden, 1.0e-15, mol, bas)
+        eri_driver.compute(vlx.ericut.qqden, 1.0e-15, mol, bas)
         eri_driver.compute(fock, dens, mol, bas, screening, self.comm)
         fock.reduce_sum(self.rank, self.size, self.comm)
 
