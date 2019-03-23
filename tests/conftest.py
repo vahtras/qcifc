@@ -3,8 +3,8 @@ import pytest
 
 @pytest.fixture(scope='function')
 def code(request):
-    coder, settings = request.param
-    code = coder()
+    Coder, settings = request.param
+    code = Coder()
     code.setup(**settings)
     code.run_scf(settings['case'])
     yield code
