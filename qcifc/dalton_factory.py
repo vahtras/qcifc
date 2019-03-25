@@ -196,7 +196,6 @@ class DaltonFactoryDummy(DaltonFactory):
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         E2, S2 = self._get_E2S2()
-        print("E2", E2)
         solutions = {
             (op, freq): (V1[op]/(E2-freq*S2)) for freq in freqs for op in ops
         }
