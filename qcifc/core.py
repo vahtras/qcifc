@@ -153,6 +153,12 @@ class QuantumChemistry(abc.ABC):
             s2b = bappend(s2b, new_s2b)
         return solutions
 
+    def _get_E2S2(self):
+        dim = 2*len(list(self.get_excitations()))
+        E2 = full.init(self.e2n(np.eye(dim)))
+        S2 = full.init(self.s2n(np.eye(dim)))
+        return E2, S2
+
     def lr(self, aops, bops, freqs=(0,), **kwargs):
         v1 = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
         solutions = self.lr_solve(bops, freqs, **kwargs)
