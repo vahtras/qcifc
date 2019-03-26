@@ -194,12 +194,12 @@ class VeloxChem(QuantumChemistry):
 
         return tuple(fabs)
 
-    def get_orbital_diagonal(self):
+    def get_orbital_diagonal(self, shift=0.0):
 
         orben = self.scf_driver.mol_orbs.ea_to_numpy()
-        z = [4*(orben[j] - orben[i]) for i, j in self.get_excitations()]
+        z = [2*(orben[j] - orben[i]) for i, j in self.get_excitations()]
         e2c = np.array(z + z)
-        return e2c
+        return e2c + shift
 
     def get_overlap_diagonal(self):
         lz = len(list(self.get_excitations()))

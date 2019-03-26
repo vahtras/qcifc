@@ -10,6 +10,7 @@ codes_settings = get_codes_settings(CASE)
 ids = get_codes_ids()
 
 
+@pytest.mark.skip('skip open shell')
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestTS06(TestQC):
     @pytest.mark.skip()

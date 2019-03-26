@@ -96,9 +96,15 @@ class DaltonFactory(QuantumChemistry):
             filename = os.path.join(self.get_workdir(), "SIRIFC")
         return sirifc.SirIfc(filename)
 
-    def get_orbital_diagonal(self, filename=None):
-        od = self._sirifc(filename).orbdiag
-        return np.append(od, od)
+    def get_orbital_diagonal(self, filename=None, shift=0.):
+        ifc = self._sirifc()
+        fc = ifc.fc.unblock()
+
+        od = []
+        for i in range(ifc.nisht):
+            for a in range(ifc.nisht, ifc.norbt):
+                od.append(2*(fc[a, a] - fc[i, i]))
+        return np.append(od, od) + shift
 
     def get_overlap_diagonal(self, filename=None):
         ifc = self._sirifc(filename)

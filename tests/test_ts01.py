@@ -10,9 +10,11 @@ codes_settings = get_codes_settings(CASE)
 ids = get_codes_ids()
 
 
+@pytest.mark.skip('skip open shell')
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestTS01(TestQC):
 
+    @pytest.mark.skip('redefined')
     def test_get_orbhess(self, code):
         """Get diagonal orbital hessian"""
         self.skip_if_not_implemented('get_orbital_diagonal', code)
@@ -46,6 +48,7 @@ class TestTS01(TestQC):
         )
 
 
+    @pytest.mark.skip('degenerate case')
     def test_get_rhs(self, code):
         """Get property gradient right-hand side"""
         self.skip_if_not_implemented('get_rhs', code)

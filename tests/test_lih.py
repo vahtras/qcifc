@@ -60,7 +60,7 @@ class TestLiH(TestQC):
         self.skip_if_not_implemented('get_orbital_diagonal', code)
         od = code.get_orbital_diagonal()
         npt.assert_allclose(
-            od,
+            od*2,
             [
                 9.71017135, 10.05445847, 10.05445847, 11.54743296,
                 1.43977221,  1.78405933, 1.78405933,  3.27703381,
@@ -177,7 +177,7 @@ class TestLiH(TestQC):
         for op, freq in zip(ops, freqs):
             npt.assert_allclose(
                 abs(initial_guess[(op, freq)]),
-                abs(expected[(op, freq)]),
+                2*abs(expected[(op, freq)]),
                 atol=1e-5
             )
 
