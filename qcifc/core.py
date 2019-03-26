@@ -44,7 +44,7 @@ class QuantumChemistry(abc.ABC):
         return self._da, self._db
 
     def initial_guess(self, ops="xyz", freqs=(0,)):
-        od = self.get_orbital_diagonal()
+        od = self.get_orbital_diagonal(shift=.0001)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
         ig = pd.DataFrame()
@@ -95,7 +95,7 @@ class QuantumChemistry(abc.ABC):
         e2b = self.e2n(b).view(matrix)
         s2b = self.s2n(b).view(matrix)
 
-        od = self.get_orbital_diagonal()
+        od = self.get_orbital_diagonal(shift=.0001)
         sd = self.get_overlap_diagonal()
         td = {w: od - w*sd for w in freqs}
 
@@ -137,7 +137,7 @@ class QuantumChemistry(abc.ABC):
                 nn = np.linalg.norm(n)
                 relative_residual_norm[(op, freq)] = rn / nn
                 print(
-                    f"{i+1} {-nv:.6f} {rn:.2e} {nn:.2e}|",
+                    f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|",
                     end=''
                 )
             print()
