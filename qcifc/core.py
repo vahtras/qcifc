@@ -43,8 +43,8 @@ class QuantumChemistry(abc.ABC):
         """Get densities"""
         return self._da, self._db
 
-    def initial_guess(self, ops="xyz", freqs=(0,)):
-        od = self.get_orbital_diagonal(shift=.0001)
+    def initial_guess(self, ops="xyz", freqs=(0,), hessian_diagonal_shift=0.0001):
+        od = self.get_orbital_diagonal(shift=hessian_diagonal_shift)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
         ig = pd.DataFrame()

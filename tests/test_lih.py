@@ -173,7 +173,7 @@ class TestLiH(TestQC):
     def test_initial_guess(self, code, args):
         """form paired trialvectors from rhs/orbdiag"""
         ops, freqs, expected = args
-        initial_guess = code.initial_guess(ops, freqs)
+        initial_guess = code.initial_guess(ops, freqs, hessian_diagonal_shift=0)
         for op, freq in zip(ops, freqs):
             npt.assert_allclose(
                 abs(initial_guess[(op, freq)]),

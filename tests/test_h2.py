@@ -221,7 +221,7 @@ class TestH2(TestQC):
         self.skip_if_not_implemented('get_overlap_diagonal', code)
 
         ops, freqs, expected = args
-        initial_guess = code.initial_guess(ops=ops, freqs=freqs)
+        initial_guess = code.initial_guess(ops=ops, freqs=freqs, hessian_diagonal_shift=0)
         for op, freq in zip(ops, freqs):
             npt.assert_allclose(
                 initial_guess[(op, freq)],
