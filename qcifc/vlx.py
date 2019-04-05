@@ -32,12 +32,6 @@ class VeloxChem(QuantumChemistry):
         self._dipoles = None
         self.observers = []
 
-    def set_observer(self, observer):
-        self.observers.append(observer)
-
-    def update(self, text):
-        for observer in self.observers:
-            observer.update(text)
 
     def is_master(self):
         return self.rank == vlx.mpi_master()

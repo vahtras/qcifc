@@ -21,6 +21,13 @@ class QuantumChemistry(abc.ABC):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def set_observer(self, observer):
+        self.observers.append(observer)
+
+    def update(self, text):
+        for observer in self.observers:
+            observer.update(text)
+
     @abc.abstractmethod
     def get_overlap(self):  # pragma: no cover
         """Abstract overlap getter"""

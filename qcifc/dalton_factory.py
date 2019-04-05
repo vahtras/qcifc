@@ -20,6 +20,7 @@ class DaltonFactory(QuantumChemistry):
         self._tmpdir = kwargs.get('tmpdir', '/tmp')
         self._da = None
         self._db = None
+        self.observers = []
 
     def update(self, text):
         print(text)
