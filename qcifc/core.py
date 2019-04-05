@@ -21,9 +21,6 @@ class OutputStream(Observer):
 class QuantumChemistry(abc.ABC):
     """Abstract factory"""
 
-    def __init__(self, code, **kwargs):
-        self.tmpdir = kwargs.get('tmpdir', '/tmp')
-
     def setup(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -48,10 +45,10 @@ class QuantumChemistry(abc.ABC):
         """Abstract Z getter"""
 
     def run_scf(self):
-        pass
+        """Initialize scf state"""
 
     def cleanup_scf(self):
-        pass
+        """Initialize scf calculation"""
 
     def set_densities(self, *das):
         """Set densities"""

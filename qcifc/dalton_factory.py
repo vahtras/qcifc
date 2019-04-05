@@ -5,7 +5,6 @@ import numpy as np
 
 from daltools import one, sirrst, sirifc, prop, rspvec, oli
 import two.core
-import two.vb
 from util import full
 
 from .core import QuantumChemistry, SMALL, swap, get_transform, bappend, Observer
@@ -74,24 +73,6 @@ class DaltonFactory(QuantumChemistry):
             f2py=False
             )
         return fab
-
-    def get_two_el_right_hessian(self, d_am, delta, filename=None):
-        """Calculate <K|H|d2L>"""
-        if filename is None:#pragma: no cover
-            filename=os.path.join(self.get_workdir(), "AOTWOINT")
-        return two.vb.vb_transform(
-            d_am, delta,
-            filename=filename
-            )
-
-    def get_two_el_leftright_hessian(self, d_ma, d_am, delta1, delta2, filename=None):
-        """Calculate <K|H|d2L>"""
-        if filename is None:#pragma: no cover
-            filename=os.path.join(self.get_workdir(), "AOTWOINT")
-        return two.vb.vb_transform2(
-            d_ma, d_am, delta1, delta2,
-            filename=filename
-            )
 
     def _sirifc(self, filename=None):
         if filename is None:

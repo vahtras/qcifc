@@ -397,3 +397,11 @@ class TestH2(TestQC):
             pytest.skip('not implemented')
 
         assert code.response_dim() == 2
+
+    def test_e2s2(self, code):
+        e2, s2 = code._get_E2S2()
+        npt.assert_allclose(s2, [[2, 0], [0, -2]], atol=1e-6)
+        npt.assert_allclose(e2, [[1.896814, -0.362421], [-0.362421,
+1.896814]], atol=1e-6)
+        
+        
