@@ -22,7 +22,9 @@ class TestH2(TestQC):
         code.update('yo')
         captured = capsys.readouterr()
         assert captured.out == 'yo\n'
-        
+
+    def test_master(self, code):
+        assert code.is_master()
 
     def test_get_wrkdir(self, code):
         """Get factory workdir"""
@@ -163,6 +165,10 @@ class TestH2(TestQC):
         n, e2n = trials
         npt.assert_allclose(code.e2n(n), e2n)
 
+    def test_oli_error(self, code):
+        with pytest.raises(TypeError):
+            code.e2n([[[]]])
+
     @pytest.mark.parametrize(
         'trials',
         [
@@ -181,6 +187,10 @@ class TestH2(TestQC):
             pytest.skip('not implemented')
         n, s2n = trials
         npt.assert_allclose(code.s2n(n), s2n, atol=1e-8)
+
+    def test_sli_error(self, code):
+        with pytest.raises(TypeError):
+            code.s2n([[[]]])
 
     @pytest.mark.parametrize(
         'args',

@@ -25,6 +25,9 @@ class QuantumChemistry(abc.ABC):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def is_master(self):
+        return True
+
     def set_observer(self, observer):
         self.observers.append(observer)
 

@@ -141,12 +141,6 @@ class DaltonFactory(QuantumChemistry):
             raise TypeError
         return u
 
-    def generate_new_trials(self, residuals, td, b):
-        return self.setup_trials(
-            vectors=residuals, td=td, b=b, renormalize=True
-        )
-
-
     def response_dim(self):
         filename = os.path.join(self.get_workdir(), "SIRIFC")
         ifc = sirifc.SirIfc(filename)
@@ -208,19 +202,6 @@ class DaltonFactoryDummy(DaltonFactory):
             ]
         ).diagonal()
         return sd
-
-    def get_orbital_hessian(self, filename=None):
-        if filename is None:
-            filename = os.path.join(self.get_workdir(), "SIRIFC")
-        ifc = sirifc.SirIfc(filename)
-        n = 2*ifc.nwopt
-        e2_diagonal = np.array(
-            [
-                oli.e2n(c, tmpdir=self.get_workdir())
-                for c in np.eye(n)
-            ]
-        ).diagonal()
-        return e2_diagonal
 
     def _get_E2S2(self):
         dim = 2*len(self.get_excitations())

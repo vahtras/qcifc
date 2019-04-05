@@ -258,6 +258,9 @@ class VeloxChem(QuantumChemistry):
                 s2n_ao = kappa_ao.T@S@D - D@S@kappa_ao.T
                 s2n_mo = mo.T @ S @ s2n_ao @ S@mo
                 s2n_vecs[:, c] = - self.mat2vec(s2n_mo)
+        else:
+            raise TypeError
+
         return s2n_vecs
 
     def get_fock(self):
