@@ -8,7 +8,8 @@ import two.core
 import two.vb
 from util import full
 
-from .core import QuantumChemistry, SMALL, swap, get_transform, bappend
+from .core import QuantumChemistry, SMALL, swap, get_transform, bappend, Observer
+
 
 
 class DaltonFactory(QuantumChemistry):
@@ -21,9 +22,6 @@ class DaltonFactory(QuantumChemistry):
         self._da = None
         self._db = None
         self.observers = []
-
-    def update(self, text):
-        print(text)
 
     def get_workdir(self):
         """Return work directory"""

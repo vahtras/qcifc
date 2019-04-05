@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import numpy.testing as npt
 
+from qcifc.core import OutputStream
+
 from . import TestQC, get_codes_settings, get_codes_ids
 
 CASE = 'h2'
@@ -13,6 +15,14 @@ ids = get_codes_ids()
 
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestH2(TestQC):
+
+    def test_set_observer(self, code, capsys):
+        stream = OutputStream(print)
+        code.set_observer(stream)
+        code.update('yo')
+        captured = capsys.readouterr()
+        assert captured.out == 'yo\n'
+        
 
     def test_get_wrkdir(self, code):
         """Get factory workdir"""

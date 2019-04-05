@@ -9,7 +9,14 @@ SMALL = 1e-10
 class Observer(abc.ABC):
     @abc.abstractmethod
     def update(self):
-        pass
+        """update method"""
+
+class OutputStream(Observer):
+    def __init__(self, stream):
+        self.stream = stream
+
+    def update(self, text):
+        self.stream(text)
 
 class QuantumChemistry(abc.ABC):
     """Abstract factory"""

@@ -7,14 +7,7 @@ import veloxchem as vlx
 from veloxchem.veloxchemlib import szblock
 from veloxchem.veloxchemlib import denmat, fockmat
 
-from .core import QuantumChemistry, Observer
-
-class OutputStream(Observer):
-    def  __init__(self, stream):
-        self.stream = stream
-
-    def update(self, text):
-        self.stream(text)
+from .core import QuantumChemistry
 
 class VeloxChem(QuantumChemistry):
 
