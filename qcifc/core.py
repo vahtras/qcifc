@@ -6,6 +6,10 @@ from util import full
 
 SMALL = 1e-10
 
+class Observer(abc.ABC):
+    @abc.abstractmethod
+    def update(self):
+        pass
 
 class QuantumChemistry(abc.ABC):
     """Abstract factory"""
@@ -105,11 +109,11 @@ class QuantumChemistry(abc.ABC):
         relative_residual_norm = pd.Series(index=igs.columns)
 
 
-        for op, freq in igs:
-            print(
-                f"it  <<{op};{op}>>{freq}     rn      nn  |", end=''
+        self.update("|".join(
+            f"it  <<{op};{op}>>{freq}     rn      nn"
+            for op, freq in igs
             )
-        print()
+        )
 
         for i in range(maxit):
             # next solution
@@ -127,6 +131,7 @@ class QuantumChemistry(abc.ABC):
             )
 
             # next residual
+            output = ""
             for op, freq in igs:
                 v = V1[op].values.view(matrix)
                 n = solutions[(op, freq)]
@@ -136,11 +141,10 @@ class QuantumChemistry(abc.ABC):
                 rn = np.linalg.norm(r)
                 nn = np.linalg.norm(n)
                 relative_residual_norm[(op, freq)] = rn / nn
-                print(
-                    f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|",
-                    end=''
-                )
-            print()
+                output += f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|"
+                
+            self.update(output)
+            #print()
             max_residual = max(relative_residual_norm)
             if max_residual < threshold:
                 print("Converged")

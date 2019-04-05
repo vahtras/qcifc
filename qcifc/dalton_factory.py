@@ -21,6 +21,9 @@ class DaltonFactory(QuantumChemistry):
         self._da = None
         self._db = None
 
+    def update(self, text):
+        print(text)
+
     def get_workdir(self):
         """Return work directory"""
         return self._tmpdir

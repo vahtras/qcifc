@@ -7,8 +7,14 @@ import veloxchem as vlx
 from veloxchem.veloxchemlib import szblock
 from veloxchem.veloxchemlib import denmat, fockmat
 
-from .core import QuantumChemistry
+from .core import QuantumChemistry, Observer
 
+class OutputStream(Observer):
+    def  __init__(self, stream):
+        self.stream = stream
+
+    def update(self, text):
+        self.stream(text)
 
 class VeloxChem(QuantumChemistry):
 
@@ -24,6 +30,14 @@ class VeloxChem(QuantumChemistry):
         self._fock = None
         self._overlap = None
         self._dipoles = None
+        self.observers = []
+
+    def set_observer(self, observer):
+        self.observers.append(observer)
+
+    def update(self, text):
+        for observer in self.observers:
+            observer.update(text)
 
     def is_master(self):
         return self.rank == vlx.mpi_master()
