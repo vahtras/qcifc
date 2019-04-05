@@ -6,3 +6,6 @@ testv:
 	python -m pytest -v --cov=qcifc --cov-report="html" tests| tee errors.err
 testx:
 	python -m pytest -x --cov=qcifc --cov-report="html" tests| tee errors.err
+browse:
+	cd htmlcov && python3 -c 'import webbrowser; webbrowser.open_new_tab("http://localhost:8000")' && python3 -m http.server 
+
