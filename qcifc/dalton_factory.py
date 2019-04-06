@@ -177,12 +177,8 @@ class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
 
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
-        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        E2, S2 = self._get_E2S2()
-        solutions = {
-            (op, freq): (V1[op]/(E2-freq*S2)) for freq in freqs for op in ops
-        }
-        return solutions
+        return self.direct_solver(ops, freqs, **kwargs)
+        
 
     def pp(self, ops="xyz", nfreqs=1, **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
@@ -202,12 +198,6 @@ class DaltonFactoryDummy(DaltonFactory):
             ]
         ).diagonal()
         return sd
-
-    def _get_E2S2(self):
-        dim = 2*len(self.get_excitations())
-        E2 = full.init([self.e2n(i) for i in np.eye(dim)])
-        S2 = full.init([self.s2n(i) for i in np.eye(dim)])
-        return E2, S2
 
     def excitation_energies(self, n_states):
         E2, S2 = self._get_E2S2()

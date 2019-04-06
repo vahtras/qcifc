@@ -7,12 +7,13 @@ import pytest
 
 sys.path.insert(0, os.path.abspath('..'))
 from qcifc.dalton_factory import DaltonFactoryDummy, DaltonFactory
-from qcifc.vlx import VeloxChem
+from qcifc.vlx import VeloxChem, VeloxChemDummy
 
 codes = {
     'dummy': DaltonFactoryDummy,
     'dalton': DaltonFactory,
     'vlx': VeloxChem,
+    'vlxdummy': VeloxChemDummy,
 }
 
 

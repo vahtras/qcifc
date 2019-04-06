@@ -336,3 +336,8 @@ class VeloxChem(QuantumChemistry):
                 gv[:, col] = -self.mat2vec(gmo)
 
         return gv
+
+class VeloxChemDummy(VeloxChem):
+
+    def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
+        return self.direct_solver(ops, freqs, **kwargs)
