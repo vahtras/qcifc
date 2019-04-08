@@ -5,9 +5,8 @@ import numpy as np
 
 from daltools import one, sirrst, sirifc, prop, rspvec, oli
 import two.core
-from util import full
 
-from .core import QuantumChemistry, SMALL, swap, get_transform, bappend, Observer
+from .core import QuantumChemistry
 
 
 
@@ -185,7 +184,7 @@ class DaltonFactoryDummy(DaltonFactory):
         E2, S2 = self._get_E2S2()
         Xn = self.eigenvectors(nfreqs)
         solutions = {
-            (op, i): (Xn[:, i] & V1[op]) for i in range(nfreqs) for op in ops
+            (op, i): np.dot(Xn[:, i], V1[op]) for i in range(nfreqs) for op in ops
         }
         return solutions
 
@@ -201,14 +200,19 @@ class DaltonFactoryDummy(DaltonFactory):
 
     def excitation_energies(self, n_states):
         E2, S2 = self._get_E2S2()
-        wn = (E2/S2).eig()
+        wn = np.linalg.eigvals(np.linalg.solve(S2, E2))
+        wn.sort()
         return wn[len(wn)//2: len(wn)//2 + n_states]
 
     def eigenvectors(self, n_states):
         E2, S2 = self._get_E2S2()
-        _, Xn = (E2/S2).eigvec()
+        #_, Xn = (E2/S2).eigvec()
+        w, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
+        p = w.argsort()
+        w = w[p]
+        Xn = Xn[:, p]
         dim = len(E2)
         for i in range(dim//2, dim//2 + n_states):
-            norm = np.sqrt(Xn[:, i].T*S2*Xn[:, i])
+            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
             Xn[:, i] /= norm
         return Xn[:, dim//2: dim//2 + n_states]

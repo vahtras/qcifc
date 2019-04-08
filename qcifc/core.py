@@ -95,10 +95,8 @@ class QuantumChemistry(abc.ABC):
         if b is not None:
             new_trials = new_trials - b*b.T*new_trials
         if trials and renormalize:
-            t = get_transform(new_trials)
-            truncated = new_trials*t
-            S12 = (truncated.T*truncated).invsqrt()
-            new_trials = truncated*S12
+            truncated = truncate(new_trials)
+            new_trials = lowdin_normalize(truncated)
         return new_trials
 
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
@@ -219,9 +217,18 @@ def bappend(b1, b2):
     return b12
 
 
-def get_transform(basis, threshold=1e-10):
+def truncate(basis, threshold=1e-10):
+    """
+    Remove linear dependency in basis
+    - skip eigenvectors of small eigenvalues of overlap matrix
+    Returns truncated transformed basis
+    """
     Sb = basis.T*basis
     l, T = Sb.eigvec()
     b_norm = np.sqrt(Sb.diagonal())
     mask = l > threshold*b_norm
-    return T[:, mask]
+    return basis @ T[:, mask]
+
+def lowdin_normalize(basis):
+    S12 = (basis.T*basis).invsqrt()
+    return basis*S12
