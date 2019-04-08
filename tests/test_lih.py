@@ -212,11 +212,17 @@ class TestLiH(TestQC):
                     ('z', 'z', 0.5): -9.065174,
                 }
             ),
+            (
+                '', '', (),
+                {
+                }
+            ),
         ],
-        ids=['0', '0.5']
+        ids=['0', '0.5', 'none']
     )
     def test_lr(self, code, args):
         aops, bops, freqs, expected = args
         lr = code.lr(aops, bops, freqs)
         for k, v in lr.items():
             npt.assert_allclose(v, expected[k], atol=1e-4)
+
