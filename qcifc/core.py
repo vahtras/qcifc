@@ -2,7 +2,6 @@
 import abc
 import numpy as np
 import pandas as pd
-from util import full
 
 SMALL = 1e-10
 
@@ -91,16 +90,15 @@ class QuantumChemistry(abc.ABC):
                 trials.append(v)
                 if freq > SMALL:
                     trials.append(swap(v))
-        new_trials = full.init(trials)
+        new_trials = np.array(trials).T
         if b is not None:
-            new_trials = new_trials - b*b.T*new_trials
+            new_trials = new_trials - b@b.T@new_trials
         if trials and renormalize:
             truncated = truncate(new_trials)
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
-        from util.full import matrix
 
         V1 = pd.DataFrame({op: v for op, v in zip(ops, self.get_rhs(*ops))})
         igs = pd.DataFrame(self.initial_guess(ops=ops, freqs=freqs))
@@ -108,8 +106,8 @@ class QuantumChemistry(abc.ABC):
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
             return igs
-        e2b = self.e2n(b).view(matrix)
-        s2b = self.s2n(b).view(matrix)
+        e2b = self.e2n(b)
+        s2b = self.s2n(b)
 
         od = self.get_orbital_diagonal(shift=.0001)
         sd = self.get_overlap_diagonal()
@@ -130,10 +128,10 @@ class QuantumChemistry(abc.ABC):
         for i in range(maxit):
             # next solution
             for op, freq in igs:
-                v = V1[op].values.view(matrix)
-                reduced_solution = (b.T*v)/(b.T*(e2b-freq*s2b))
-                solutions[(op, freq)] = b*reduced_solution
-                e2nn[(op, freq)] = e2b*reduced_solution
+                v = V1[op].values
+                reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
+                solutions[(op, freq)] = b@reduced_solution
+                e2nn[(op, freq)] = e2b@reduced_solution
 
 #           e2nn = pd.DataFrame(
 #               self.e2n(solutions.values), columns=solutions.columns
@@ -145,7 +143,7 @@ class QuantumChemistry(abc.ABC):
             # next residual
             output = ""
             for op, freq in igs:
-                v = V1[op].values.view(matrix)
+                v = V1[op].values
                 n = solutions[(op, freq)]
                 r = e2nn[(op, freq)] - freq*s2nn[(op, freq)] - v
                 residuals[(op, freq)] = r
@@ -163,8 +161,8 @@ class QuantumChemistry(abc.ABC):
                 break
             new_trials = self.setup_trials(residuals, td=td, b=b)
             b = bappend(b, new_trials)
-            new_e2b = self.e2n(new_trials).view(matrix)
-            new_s2b = self.s2n(new_trials).view(matrix)
+            new_e2b = self.e2n(new_trials)
+            new_s2b = self.s2n(new_trials)
             e2b = bappend(e2b, new_e2b)
             s2b = bappend(s2b, new_s2b)
         return solutions
@@ -179,8 +177,8 @@ class QuantumChemistry(abc.ABC):
 
     def _get_E2S2(self):
         dim = 2*len(list(self.get_excitations()))
-        E2 = full.init(self.e2n(np.eye(dim)))
-        S2 = full.init(self.s2n(np.eye(dim)))
+        E2 = self.e2n(np.eye(dim))
+        S2 = self.s2n(np.eye(dim))
         return E2, S2
 
     def lr(self, aops, bops, freqs=(0,), **kwargs):
@@ -213,7 +211,7 @@ def bappend(b1, b2):
     """
     Merge arrays by appending column-wise
     """
-    b12 = np.append(b1, b2, axis=1).view(full.matrix)
+    b12 = np.append(b1, b2, axis=1)
     return b12
 
 
@@ -223,12 +221,13 @@ def truncate(basis, threshold=1e-10):
     - skip eigenvectors of small eigenvalues of overlap matrix
     Returns truncated transformed basis
     """
-    Sb = basis.T*basis
-    l, T = Sb.eigvec()
+    Sb = basis.T@basis
+    l, T = np.linalg.eig(Sb)
     b_norm = np.sqrt(Sb.diagonal())
     mask = l > threshold*b_norm
     return basis @ T[:, mask]
 
 def lowdin_normalize(basis):
-    S12 = (basis.T*basis).invsqrt()
+    l, T = np.linalg.eig(basis.T@basis)
+    S12 = T@np.sqrt(1/l)@T.T
     return basis*S12
