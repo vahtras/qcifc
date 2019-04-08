@@ -1,7 +1,6 @@
 """Abstract interfact to QM codes"""
 import abc
 import numpy as np
-import pandas as pd
 
 SMALL = 1e-10
 
@@ -64,7 +63,7 @@ class QuantumChemistry(abc.ABC):
         od = self.get_orbital_diagonal(shift=hessian_diagonal_shift)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
-        ig = pd.DataFrame()
+        ig = {}
         for op, grad in zip(ops, self.get_rhs(*ops)):
             gn = np.linalg.norm(grad)
             for w in freqs:
@@ -81,7 +80,7 @@ class QuantumChemistry(abc.ABC):
         """
         trials = []
         for (op, freq) in vectors:
-            vec = vectors[(op, freq)].values
+            vec = vectors[(op, freq)]
             if td is not None:
                 v = vec/td[freq]
             else:
@@ -98,10 +97,10 @@ class QuantumChemistry(abc.ABC):
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
-    def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5):
+    def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5, roots=0):
 
-        V1 = pd.DataFrame({op: v for op, v in zip(ops, self.get_rhs(*ops))})
-        igs = pd.DataFrame(self.initial_guess(ops=ops, freqs=freqs))
+        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
+        igs = self.initial_guess(ops=ops, freqs=freqs)
         b = self.setup_trials(igs)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
@@ -113,10 +112,10 @@ class QuantumChemistry(abc.ABC):
         sd = self.get_overlap_diagonal()
         td = {w: od - w*sd for w in freqs}
 
-        solutions = pd.DataFrame()
-        residuals = pd.DataFrame()
-        e2nn = pd.DataFrame()
-        relative_residual_norm = pd.Series(index=igs.columns)
+        solutions = {}
+        residuals = {}
+        e2nn = {}
+        relative_residual_norm = {}
 
 
         self.update("|".join(
@@ -128,22 +127,17 @@ class QuantumChemistry(abc.ABC):
         for i in range(maxit):
             # next solution
             for op, freq in igs:
-                v = V1[op].values
+                v = V1[op]
                 reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
                 solutions[(op, freq)] = b@reduced_solution
                 e2nn[(op, freq)] = e2b@reduced_solution
 
-#           e2nn = pd.DataFrame(
-#               self.e2n(solutions.values), columns=solutions.columns
-#           )
-            s2nn = pd.DataFrame(
-                self.s2n(solutions.values), columns=solutions.columns
-            )
+            s2nn = {k: self.s2n(v) for k, v in solutions.items()}
 
             # next residual
             output = ""
             for op, freq in igs:
-                v = V1[op].values
+                v = V1[op]
                 n = solutions[(op, freq)]
                 r = e2nn[(op, freq)] - freq*s2nn[(op, freq)] - v
                 residuals[(op, freq)] = r
@@ -155,7 +149,7 @@ class QuantumChemistry(abc.ABC):
                 
             self.update(output)
             #print()
-            max_residual = max(relative_residual_norm)
+            max_residual = max(relative_residual_norm.values())
             if max_residual < threshold:
                 print("Converged")
                 break
