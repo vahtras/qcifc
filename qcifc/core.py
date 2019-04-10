@@ -158,12 +158,12 @@ class QuantumChemistry(abc.ABC):
             if max(relative_residual_norm.values()) < threshold:
                 print("Converged")
                 break
+
             new_trials = self.setup_trials(residuals, td=td, b=b)
             b = bappend(b, new_trials)
-            new_e2b = self.e2n(new_trials)
-            new_s2b = self.s2n(new_trials)
-            e2b = bappend(e2b, new_e2b)
-            s2b = bappend(s2b, new_s2b)
+            e2b = bappend(e2b, self.e2n(new_trials))
+            s2b = bappend(s2b, self.s2n(new_trials))
+
         return solutions
 
     def direct_lr_solver(self, ops="xyz", freqs=(0.), **kwargs):
