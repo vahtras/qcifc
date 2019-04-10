@@ -9,6 +9,7 @@ from veloxchem.veloxchemlib import denmat, fockmat
 
 from .core import QuantumChemistry
 
+
 class VeloxChem(QuantumChemistry):
 
     def __init__(self, **kwargs):
@@ -24,7 +25,6 @@ class VeloxChem(QuantumChemistry):
         self._overlap = None
         self._dipoles = None
         self.observers = []
-
 
     def is_master(self):
         return self.rank == vlx.mpi_master()
@@ -337,7 +337,17 @@ class VeloxChem(QuantumChemistry):
 
         return gv
 
+
 class VeloxChemDummy(VeloxChem):
 
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
-        return self.direct_solver(ops, freqs, **kwargs)
+        return self.direct_lr_solver(ops, freqs, **kwargs)
+
+    def pp_solve(self, n_states):
+        return self.direct_ev_solver(n_states)
+
+    def transition_moments(self, ops, n_states):
+        solutions = list(self.pp_solve(n_states))
+        V1 = {op: V for op, V in zip(ops, self.get_rhs(*ops))}
+        tms = {op: [np.dot(V1[op], s[1]) for s in solutions] for op in ops}
+        return tms

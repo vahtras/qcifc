@@ -178,7 +178,7 @@ class DaltonFactoryDummy(DaltonFactory):
         return sd
 
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
-        return self.direct_solver(ops, freqs, **kwargs)
+        return self.direct_lr_solver(ops, freqs, **kwargs)
 
     def pp(self, ops="xyz", nfreqs=0, **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
@@ -191,18 +191,7 @@ class DaltonFactoryDummy(DaltonFactory):
         return solutions
 
     def pp_solve(self, n_states):
-        E2, S2 = self._get_E2S2()
-        wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
-        p = wn.argsort()
-        wn = wn[p]
-        Xn = Xn[:, p]
-        dim = len(E2)
-        lo = dim//2
-        hi = dim//2 + n_states
-        for i in range(lo, hi):
-            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
-            Xn[:, i] /= norm
-        return zip(wn[lo: hi], Xn[:, lo: hi].T)
+        return self.direct_ev_solver(n_states)
 
     def transition_moments(self, ops, n_states):
         solutions = list(self.pp_solve(n_states))

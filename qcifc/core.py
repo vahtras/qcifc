@@ -166,7 +166,7 @@ class QuantumChemistry(abc.ABC):
             s2b = bappend(s2b, new_s2b)
         return solutions
 
-    def direct_solver(self, ops="xyz", freqs=(0.), **kwargs):
+    def direct_lr_solver(self, ops="xyz", freqs=(0.), **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         E2, S2 = self._get_E2S2()
         solutions = {
@@ -174,6 +174,20 @@ class QuantumChemistry(abc.ABC):
             for freq in freqs for op in ops
         }
         return solutions
+
+    def direct_ev_solver(self, n_states):
+        E2, S2 = self._get_E2S2()
+        wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
+        p = wn.argsort()
+        wn = wn[p]
+        Xn = Xn[:, p]
+        dim = len(E2)
+        lo = dim//2
+        hi = dim//2 + n_states
+        for i in range(lo, hi):
+            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
+            Xn[:, i] /= norm
+        return zip(wn[lo: hi], Xn[:, lo: hi].T)
 
     def _get_E2S2(self):
         dim = 2*len(list(self.get_excitations()))
