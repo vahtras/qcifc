@@ -389,6 +389,15 @@ class TestH2(TestQC):
     def test_get_excitations(self, code):
         assert list(code.get_excitations()) == [(0, 1)]
 
+    def test_initial_excitation(self, code):
+        expected = {(0, 1): (1.24969733, [1.0, 0.0])}
+        calculated =  code.initial_excitations(1)
+        w1, X1 = expected[(0, 1)]
+        w2, X2 = calculated[(0, 1)]
+        assert w1 == pytest.approx(w2)
+        npt.assert_allclose(X1, X2, atol=1e07)
+        
+
     def test_excitation_energies(self, code):
         self.skip_if_not_implemented('excitation_energies', code)
 
@@ -397,6 +406,7 @@ class TestH2(TestQC):
 
     def test_eigenvectors(self, code):
         self.skip_if_not_implemented('eigenvectors', code)
+
 
         X = code.eigenvectors(1)
         npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])

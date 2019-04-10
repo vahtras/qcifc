@@ -4,10 +4,12 @@ import numpy as np
 
 SMALL = 1e-10
 
+
 class Observer(abc.ABC):
     @abc.abstractmethod
     def update(self):
         """update method"""
+
 
 class OutputStream(Observer):
     def __init__(self, stream):
@@ -15,6 +17,7 @@ class OutputStream(Observer):
 
     def update(self, text):
         self.stream(text)
+
 
 class QuantumChemistry(abc.ABC):
     """Abstract factory"""
@@ -100,11 +103,11 @@ class QuantumChemistry(abc.ABC):
     def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5, roots=0):
 
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        igs = self.initial_guess(ops=ops, freqs=freqs)
-        b = self.setup_trials(igs)
+        guess = self.initial_guess(ops=ops, freqs=freqs)
+        b = self.setup_trials(guess)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
-            return igs
+            return guess
         e2b = self.e2n(b)
         s2b = self.s2n(b)
 
@@ -115,28 +118,27 @@ class QuantumChemistry(abc.ABC):
         solutions = {}
         residuals = {}
         e2nn = {}
+        s2nn = {}
         relative_residual_norm = {}
-
 
         self.update("|".join(
             f"it  <<{op};{op}>>{freq}     rn      nn"
-            for op, freq in igs
+            for op, freq in guess
             )
         )
 
         for i in range(maxit):
             # next solution
-            for op, freq in igs:
+            for op, freq in guess:
                 v = V1[op]
                 reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
                 solutions[(op, freq)] = b@reduced_solution
                 e2nn[(op, freq)] = e2b@reduced_solution
-
-            s2nn = {k: self.s2n(v) for k, v in solutions.items()}
+                s2nn[(op, freq)] = s2b@reduced_solution
 
             # next residual
             output = ""
-            for op, freq in igs:
+            for op, freq in guess:
                 v = V1[op]
                 n = solutions[(op, freq)]
                 r = e2nn[(op, freq)] - freq*s2nn[(op, freq)] - v
@@ -146,11 +148,10 @@ class QuantumChemistry(abc.ABC):
                 nn = np.linalg.norm(n)
                 relative_residual_norm[(op, freq)] = rn / nn
                 output += f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|"
-                
+
             self.update(output)
-            #print()
-            max_residual = max(relative_residual_norm.values())
-            if max_residual < threshold:
+
+            if max(relative_residual_norm.values()) < threshold:
                 print("Converged")
                 break
             new_trials = self.setup_trials(residuals, td=td, b=b)
@@ -165,7 +166,8 @@ class QuantumChemistry(abc.ABC):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         E2, S2 = self._get_E2S2()
         solutions = {
-            (op, freq): np.linalg.solve((E2-freq*S2), V1[op]) for freq in freqs for op in ops
+            (op, freq): np.linalg.solve((E2-freq*S2), V1[op])
+            for freq in freqs for op in ops
         }
         return solutions
 
@@ -183,6 +185,19 @@ class QuantumChemistry(abc.ABC):
             for bop, w in solutions:
                 lrs[(aop, bop, w)] = -np.dot(v1[aop], solutions[(bop, w)])
         return lrs
+
+    def initial_excitations(self, n):
+        excitations = list(self.get_excitations())
+        excitation_energies = 0.5*self.get_orbital_diagonal()
+        w = {ia: w for ia, w in zip(excitations, excitation_energies)}
+        ordered_excitations = sorted(w, key=w.get)[:n]
+        final = {}
+        for (i, a) in ordered_excitations:
+            ia = excitations.index((i, a))
+            Xn = np.zeros(2*len(excitations))
+            Xn[ia] = 1.0
+            final[(i, a)] = (w[(i, a)], Xn)
+        return final
 
 
 def swap(xy):
@@ -221,7 +236,8 @@ def truncate(basis, threshold=1e-10):
     mask = l > threshold*b_norm
     return basis @ T[:, mask]
 
+
 def lowdin_normalize(basis):
     l, T = np.linalg.eig(basis.T@basis)
-    S12 = T@np.sqrt(1/l)@T.T
-    return basis*S12
+    inverse_sqrt = (T*np.sqrt(1/l)) @ T.T
+    return basis@inverse_sqrt
