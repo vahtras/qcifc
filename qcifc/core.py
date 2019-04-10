@@ -62,7 +62,7 @@ class QuantumChemistry(abc.ABC):
         """Get densities"""
         return self._da, self._db
 
-    def initial_guess(self, ops="xyz", freqs=(0,), hessian_diagonal_shift=0.0001):
+    def initial_guess(self, ops="xyz", freqs=(0,), roots=0, hessian_diagonal_shift=0.0001):
         od = self.get_orbital_diagonal(shift=hessian_diagonal_shift)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
@@ -191,12 +191,12 @@ class QuantumChemistry(abc.ABC):
         excitation_energies = 0.5*self.get_orbital_diagonal()
         w = {ia: w for ia, w in zip(excitations, excitation_energies)}
         ordered_excitations = sorted(w, key=w.get)[:n]
-        final = {}
+        final = []
         for (i, a) in ordered_excitations:
             ia = excitations.index((i, a))
             Xn = np.zeros(2*len(excitations))
             Xn[ia] = 1.0
-            final[(i, a)] = (w[(i, a)], Xn)
+            final.append((w[(i, a)], Xn))
         return final
 
 
