@@ -62,7 +62,9 @@ class QuantumChemistry(abc.ABC):
         """Get densities"""
         return self._da, self._db
 
-    def initial_guess(self, ops="xyz", freqs=(0,), roots=0, hessian_diagonal_shift=0.0001):
+    def initial_guess(
+        self, ops="xyz", freqs=(0,), roots=0, hessian_diagonal_shift=0.0001
+    ):
         od = self.get_orbital_diagonal(shift=hessian_diagonal_shift)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
@@ -100,7 +102,9 @@ class QuantumChemistry(abc.ABC):
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
-    def lr_solve(self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5, roots=0):
+    def lr_solve(
+        self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5, roots=0
+    ):
 
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         guess = self.initial_guess(ops=ops, freqs=freqs)

@@ -149,9 +149,9 @@ class TestH2(TestQC):
     @pytest.mark.parametrize(
         'trials',
         [
-#           ([[1, 0]], [1.89681370, -0.36242092]),
+            # ([[1, 0]], [1.89681370, -0.36242092]),
             ([[1], [0]], [[1.89681370], [-0.36242092]]),
-#           ([0, 1], [-0.36242092, 1.89681370]),
+            # ([0, 1], [-0.36242092, 1.89681370]),
             ([[0], [1]], [[-0.36242092], [1.89681370]]),
             ([[1, 0],
               [0, 1]],
@@ -241,10 +241,14 @@ class TestH2(TestQC):
         self.skip_if_not_implemented('get_overlap_diagonal', code)
 
         ops, freqs, expected = args
-        initial_guess = code.initial_guess(ops=ops, freqs=freqs, hessian_diagonal_shift=0)
+        guess = code.initial_guess(
+            ops=ops,
+            freqs=freqs,
+            hessian_diagonal_shift=0
+        )
         for op, freq in zip(ops, freqs):
             npt.assert_allclose(
-                initial_guess[(op, freq)],
+                guess[(op, freq)],
                 expected[(op, freq)],
                 rtol=1e-5,
                 )
@@ -374,7 +378,7 @@ class TestH2(TestQC):
     @pytest.mark.parametrize(
         'args',
         [
-            ('z', 1, {('z', 0): 1.1946797}),
+            ('z', 1, {'z': [1.1946797]}),
         ],
         ids=['z1', ]
     )
@@ -383,8 +387,8 @@ class TestH2(TestQC):
 
         aops, nfreqs, expected = args
         pp = code.pp(aops, nfreqs)
-        for k, v in pp.items():
-            npt.assert_allclose(v, expected[k])
+        for op, excitation_energies in pp.items():
+            npt.assert_allclose(excitation_energies, expected[op])
 
     def test_get_excitations(self, code):
         assert list(code.get_excitations()) == [(0, 1)]
@@ -396,7 +400,6 @@ class TestH2(TestQC):
         w2, X2 = calculated[0]
         assert w1 == pytest.approx(w2)
         npt.assert_allclose(X1, X2, atol=1e07)
-        
 
     def test_excitation_energies(self, code):
         self.skip_if_not_implemented('excitation_energies', code)
@@ -407,16 +410,21 @@ class TestH2(TestQC):
     def test_eigenvectors(self, code):
         self.skip_if_not_implemented('eigenvectors', code)
 
-    def test_pp_solve(self, code):
-        self.skip_if_not_implemented('pp_solve', code)
-        eigensolutions = self.pp_solve(1)
-        w, X = eigensolutions[0]
-        
-        assert w == pytest.approx(0.93093411)
-
-
         X = code.eigenvectors(1)
         npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
+
+    def test_pp_solve(self, code):
+        self.skip_if_not_implemented('pp_solve', code)
+        eigensolutions = list(code.pp_solve(1))
+        w, X = eigensolutions[0]
+
+        assert w == pytest.approx(0.93093411)
+        npt.assert_allclose(X, [0.7104169615, 0.0685000673])
+
+    def test_transition_moments(self, code):
+        self.skip_if_not_implemented('transition_moments', code)
+        transition_moments = code.transition_moments('z', 1)
+        npt.assert_allclose(transition_moments['z'], [1.1946797])
 
     def test_dim(self, code):
         self.skip_if_not_implemented('response_dim', code)
@@ -428,7 +436,8 @@ class TestH2(TestQC):
     def test_e2s2(self, code):
         e2, s2 = code._get_E2S2()
         npt.assert_allclose(s2, [[2, 0], [0, -2]], atol=1e-6)
-        npt.assert_allclose(e2, [[1.896814, -0.362421], [-0.362421,
-1.896814]], atol=1e-6)
-        
-        
+        npt.assert_allclose(
+            e2,
+            [[1.896814, -0.362421], [-0.362421, 1.896814]],
+            atol=1e-6
+        )

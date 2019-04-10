@@ -9,7 +9,6 @@ import two.core
 from .core import QuantumChemistry
 
 
-
 class DaltonFactory(QuantumChemistry):
     """Concrete 'factory', Dalton"""
 
@@ -66,7 +65,7 @@ class DaltonFactory(QuantumChemistry):
 
     def get_two_el_fock(self, *dab):
         """Get focks"""
-        fab =  two.core.fockab(
+        fab = two.core.fockab(
             *dab,
             filename=os.path.join(self.get_workdir(), "AOTWOINT"),
             f2py=False
@@ -145,12 +144,6 @@ class DaltonFactory(QuantumChemistry):
         ifc = sirifc.SirIfc(filename)
         return 2*ifc.nwopt
 
-    #def pp(args, **kwargs):
-    #    pass
-
-    #def excitation_energies(*args, **kwargs):
-        #pass
-
     def get_excitations(self):
         ifc = self._sirifc()
         excitations = list(rspvec.jwop(ifc))
@@ -171,22 +164,8 @@ class DaltonFactory(QuantumChemistry):
         )
 
 
-
 class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
-
-    def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
-        return self.direct_solver(ops, freqs, **kwargs)
-        
-
-    def pp(self, ops="xyz", nfreqs=1, **kwargs):
-        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        E2, S2 = self._get_E2S2()
-        Xn = self.eigenvectors(nfreqs)
-        solutions = {
-            (op, i): np.dot(Xn[:, i], V1[op]) for i in range(nfreqs) for op in ops
-        }
-        return solutions
 
     def get_overlap_diagonal(self, filename=None):
         n = self.response_dim()
@@ -198,6 +177,39 @@ class DaltonFactoryDummy(DaltonFactory):
         ).diagonal()
         return sd
 
+    def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
+        return self.direct_solver(ops, freqs, **kwargs)
+
+    def pp(self, ops="xyz", nfreqs=0, **kwargs):
+        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
+        E2, S2 = self._get_E2S2()
+        Xn = self.eigenvectors(nfreqs)
+        solutions = {
+            op: [np.dot(Xn[:, i], V1[op]) for i in range(nfreqs)]
+            for op in ops
+        }
+        return solutions
+
+    def pp_solve(self, n_states):
+        E2, S2 = self._get_E2S2()
+        wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
+        p = wn.argsort()
+        wn = wn[p]
+        Xn = Xn[:, p]
+        dim = len(E2)
+        lo = dim//2
+        hi = dim//2 + n_states
+        for i in range(lo, hi):
+            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
+            Xn[:, i] /= norm
+        return zip(wn[lo: hi], Xn[:, lo: hi].T)
+
+    def transition_moments(self, ops, n_states):
+        solutions = list(self.pp_solve(n_states))
+        V1 = {op: V for op, V in zip(ops, self.get_rhs(*ops))}
+        tms = {op: [np.dot(V1[op], s[1]) for s in solutions] for op in ops}
+        return tms
+
     def excitation_energies(self, n_states):
         E2, S2 = self._get_E2S2()
         wn = np.linalg.eigvals(np.linalg.solve(S2, E2))
@@ -206,7 +218,6 @@ class DaltonFactoryDummy(DaltonFactory):
 
     def eigenvectors(self, n_states):
         E2, S2 = self._get_E2S2()
-        #_, Xn = (E2/S2).eigvec()
         w, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
         p = w.argsort()
         w = w[p]
