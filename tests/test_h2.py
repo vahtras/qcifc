@@ -352,7 +352,7 @@ class TestH2(TestQC):
         self.skip_if_not_implemented('lr_solve', code)
 
         ops, freqs, expected = args
-        solutions = code.lr_solve(ops=ops, freqs=freqs)
+        solutions, _ = code.lr_solve(ops=ops, freqs=freqs)
         for op, freq in solutions:
             npt.assert_allclose(
                 solutions[(op, freq)],
@@ -413,13 +413,35 @@ class TestH2(TestQC):
         X = code.eigenvectors(1)
         npt.assert_allclose(X.T, [[0.7104169615, 0.0685000673]])
 
-    def test_pp_solve(self, code):
+    @pytest.mark.parametrize(
+        'data',
+        [
+            (
+                1,
+                [
+                    (.93093411, [0.7104169615, 0.0685000673]),
+                ],
+            ),
+            (
+                0,
+                [
+                ],
+            ),
+        ],
+        ids=['1', '0'],
+    )
+    def test_pp_solve(self, code, data):
         self.skip_if_not_implemented('pp_solve', code)
-        eigensolutions = list(code.pp_solve(1))
-        w, X = eigensolutions[0]
+        n, expected = data
 
-        assert w == pytest.approx(0.93093411)
-        npt.assert_allclose(X, [0.7104169615, 0.0685000673])
+        eigensolutions = list(code.pp_solve(n))
+
+        assert len(eigensolutions) == len(expected)
+
+        for (w, X), (wref, Xref) in zip(eigensolutions, expected):
+
+            assert w == pytest.approx(wref)
+            npt.assert_allclose(X, Xref)
 
     def test_transition_moments(self, code):
         self.skip_if_not_implemented('transition_moments', code)

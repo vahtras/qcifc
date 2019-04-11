@@ -79,7 +79,7 @@ class QuantumChemistry(abc.ABC):
                     ig[(op, w)] = grad/td
         return ig
 
-    def setup_trials(self, vectors, td=None, b=None, renormalize=True):
+    def setup_trials(self, vectors, excitations=[], td=None, b=None, renormalize=True):
         """
         Set up initial trial vectors from a set of intial guesses
         """
@@ -94,6 +94,11 @@ class QuantumChemistry(abc.ABC):
                 trials.append(v)
                 if freq > SMALL:
                     trials.append(swap(v))
+
+        for w, X in excitations:
+            trials.append(X)
+            trials.append(swap(X))
+
         new_trials = np.array(trials).T
         if b is not None:
             new_trials = new_trials - b@b.T@new_trials
@@ -102,16 +107,22 @@ class QuantumChemistry(abc.ABC):
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
+    def pp_solve(self, roots):
+        _, excitations =  self.lr_solve(ops=(), freqs=(), roots=roots)
+        return excitations
+
     def lr_solve(
         self, ops="xyz", freqs=(0,), maxit=25, threshold=1e-5, roots=0
     ):
 
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        guess = self.initial_guess(ops=ops, freqs=freqs)
-        b = self.setup_trials(guess)
+        initial_guess = self.initial_guess(ops=ops, freqs=freqs)
+        initial_excitations = self.initial_excitations(roots)
+
+        b = self.setup_trials(initial_guess, initial_excitations)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
-            return guess
+            return initial_guess, initial_excitations
         e2b = self.e2n(b)
         s2b = self.s2n(b)
 
@@ -121,19 +132,21 @@ class QuantumChemistry(abc.ABC):
 
         solutions = {}
         residuals = {}
+        excitations = [None]*roots
         e2nn = {}
         s2nn = {}
         relative_residual_norm = {}
 
         self.update("|".join(
             f"it  <<{op};{op}>>{freq}     rn      nn"
-            for op, freq in guess
+            for op, freq in initial_guess
             )
         )
 
         for i in range(maxit):
             # next solution
-            for op, freq in guess:
+            output = ""
+            for op, freq in initial_guess:
                 v = V1[op]
                 reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
                 solutions[(op, freq)] = b@reduced_solution
@@ -141,8 +154,7 @@ class QuantumChemistry(abc.ABC):
                 s2nn[(op, freq)] = s2b@reduced_solution
 
             # next residual
-            output = ""
-            for op, freq in guess:
+            # for op, freq in initial_guess:
                 v = V1[op]
                 n = solutions[(op, freq)]
                 r = e2nn[(op, freq)] - freq*s2nn[(op, freq)] - v
@@ -152,6 +164,16 @@ class QuantumChemistry(abc.ABC):
                 nn = np.linalg.norm(n)
                 relative_residual_norm[(op, freq)] = rn / nn
                 output += f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|"
+
+            if roots > 0:
+                reduced_ev = self.direct_ev_solver(roots, b.T@e2b, b.T@s2b)
+                for k, (w, reduced_X) in enumerate(reduced_ev):
+                    r = (e2b - w*s2b)@reduced_X
+                    X = b@reduced_X
+                    rn = np.linalg.norm(r)
+                    xn = np.linalg.norm(X)
+                    relative_residual_norm[k] = rn/xn
+                    excitations[k] = (w, X)
 
             self.update(output)
 
@@ -164,7 +186,7 @@ class QuantumChemistry(abc.ABC):
             e2b = bappend(e2b, self.e2n(new_trials))
             s2b = bappend(s2b, self.s2n(new_trials))
 
-        return solutions
+        return solutions, excitations
 
     def direct_lr_solver(self, ops="xyz", freqs=(0.), **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
@@ -175,8 +197,10 @@ class QuantumChemistry(abc.ABC):
         }
         return solutions
 
-    def direct_ev_solver(self, n_states):
-        E2, S2 = self._get_E2S2()
+    def direct_ev_solver(self, n_states, E2=None, S2=None):
+        if E2 is None or S2 is None:
+            E2, S2 = self._get_E2S2()
+
         wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
         p = wn.argsort()
         wn = wn[p]
@@ -197,7 +221,7 @@ class QuantumChemistry(abc.ABC):
 
     def lr(self, aops, bops, freqs=(0,), **kwargs):
         v1 = {op: v for op, v in zip(aops, self.get_rhs(*aops))}
-        solutions = self.lr_solve(bops, freqs, **kwargs)
+        solutions, _ = self.lr_solve(bops, freqs, **kwargs)
         lrs = {}
         for aop in aops:
             for bop, w in solutions:

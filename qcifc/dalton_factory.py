@@ -178,7 +178,7 @@ class DaltonFactoryDummy(DaltonFactory):
         return sd
 
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
-        return self.direct_lr_solver(ops, freqs, **kwargs)
+        return self.direct_lr_solver(ops, freqs, **kwargs), []
 
     def pp(self, ops="xyz", nfreqs=0, **kwargs):
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}

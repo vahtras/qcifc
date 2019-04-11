@@ -341,7 +341,7 @@ class VeloxChem(QuantumChemistry):
 class VeloxChemDummy(VeloxChem):
 
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
-        return self.direct_lr_solver(ops, freqs, **kwargs)
+        return self.direct_lr_solver(ops, freqs, **kwargs), []
 
     def pp_solve(self, n_states):
         return self.direct_ev_solver(n_states)
