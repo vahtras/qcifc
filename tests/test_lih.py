@@ -226,3 +226,17 @@ class TestLiH(TestQC):
         for k, v in lr.items():
             npt.assert_allclose(v, expected[k], atol=1e-4)
 
+
+    def test_initial_excitation(self, code):
+        expected = [
+            (
+                0.35994304,
+                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0] +
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            )
+        ]
+        calculated = code.initial_excitations(1)
+        w1, X1 = expected[0]
+        w2, X2 = calculated[0]
+        assert w1 == pytest.approx(w2)
+        npt.assert_allclose(X1, X2, atol=1e07)
