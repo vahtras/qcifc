@@ -240,3 +240,54 @@ class TestLiH(TestQC):
         w2, X2 = calculated[0]
         assert w1 == pytest.approx(w2)
         npt.assert_allclose(X1, X2, atol=1e07)
+
+    def test_excitation_energies(self, code):
+        self.skip_if_not_implemented('excitation_energies', code)
+
+        w, = code.excitation_energies(1)
+        assert w == pytest.approx(0.16179567)
+
+    def test_eigenvectors(self, code):
+        self.skip_if_not_implemented('eigenvectors', code)
+
+        X = code.eigenvectors(1)
+        npt.assert_allclose(abs(X[4, 0]), 0.7078520478, atol=1e-5)
+        npt.assert_allclose(abs(X[4+8, 0]), 0.0254907063, atol=1e-5)
+
+    @pytest.mark.parametrize(
+        'data',
+        [
+            (
+                1,
+                [
+                    (0.16179567, [-0.7078520478, -0.0254907063])
+                ],
+            ),
+            (
+                0,
+                [
+                ],
+            ),
+        ],
+        ids=['1', '0'],
+    )
+    def test_pp_solve(self, code, data):
+        self.skip_if_not_implemented('pp_solve', code)
+        n, expected = data
+
+        eigensolutions = list(code.pp_solve(n))
+
+        assert len(eigensolutions) == len(expected)
+
+        for (w, X), (wref, Xref) in zip(eigensolutions, expected):
+
+            assert w == pytest.approx(wref)
+            try:
+                npt.assert_allclose(X[[4, 12]], Xref, atol=1e-5)
+            except AssertionError:
+                npt.assert_allclose(-X[[4, 12]], Xref, atol=1e-5)
+
+    def test_transition_moments(self, code):
+        self.skip_if_not_implemented('transition_moments', code)
+        transition_moments = code.transition_moments('z', 1)
+        npt.assert_allclose(transition_moments['z'], [4.4026842])

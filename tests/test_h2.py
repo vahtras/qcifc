@@ -329,7 +329,7 @@ class TestH2(TestQC):
             key: np.array(vector)
             for key, vector in initial_guesses.items()
         })
-        b = code.setup_trials(ig, renormalize=False)
+        b = code.init_trials(ig, renormalize=False)
         npt.assert_allclose(b.T, expected, rtol=1e-5)
 
     @pytest.mark.parametrize(
@@ -404,7 +404,7 @@ class TestH2(TestQC):
     def test_excitation_energies(self, code):
         self.skip_if_not_implemented('excitation_energies', code)
 
-        w = code.excitation_energies(1)
+        w, = code.excitation_energies(1)
         assert w == pytest.approx(0.93093411)
 
     def test_eigenvectors(self, code):

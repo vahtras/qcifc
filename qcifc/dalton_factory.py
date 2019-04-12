@@ -200,19 +200,7 @@ class DaltonFactoryDummy(DaltonFactory):
         return tms
 
     def excitation_energies(self, n_states):
-        E2, S2 = self._get_E2S2()
-        wn = np.linalg.eigvals(np.linalg.solve(S2, E2))
-        wn.sort()
-        return wn[len(wn)//2: len(wn)//2 + n_states]
+        return tuple(w for w, _ in self.direct_ev_solver(n_states))
 
     def eigenvectors(self, n_states):
-        E2, S2 = self._get_E2S2()
-        w, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
-        p = w.argsort()
-        w = w[p]
-        Xn = Xn[:, p]
-        dim = len(E2)
-        for i in range(dim//2, dim//2 + n_states):
-            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
-            Xn[:, i] /= norm
-        return Xn[:, dim//2: dim//2 + n_states]
+        return np.array([X for _, X in self.direct_ev_solver(n_states)]).T

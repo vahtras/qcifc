@@ -79,6 +79,34 @@ class QuantumChemistry(abc.ABC):
                     ig[(op, w)] = grad/td
         return ig
 
+    def init_trials(self, vectors, excitations=[], td=None, b=None, renormalize=True):
+        """
+        Set up initial trial vectors from a set of intial guesses
+        """
+        trials = []
+        for (op, freq) in vectors:
+            vec = vectors[(op, freq)]
+            if td is not None:
+                v = vec/td[freq]
+            else:
+                v = vec
+            if np.linalg.norm(v) > SMALL:
+                trials.append(v)
+                if freq > SMALL:
+                    trials.append(swap(v))
+
+        for w, X in excitations:
+            trials.append(X)
+            trials.append(swap(X))
+
+        new_trials = np.array(trials).T
+        if b is not None:
+            new_trials = new_trials - b@b.T@new_trials
+        if trials and renormalize:
+            truncated = truncate(new_trials)
+            new_trials = lowdin_normalize(truncated)
+        return new_trials
+
     def setup_trials(self, vectors, excitations=[], td=None, b=None, renormalize=True):
         """
         Set up initial trial vectors from a set of intial guesses
@@ -119,7 +147,7 @@ class QuantumChemistry(abc.ABC):
         initial_guess = self.initial_guess(ops=ops, freqs=freqs)
         initial_excitations = self.initial_excitations(roots)
 
-        b = self.setup_trials(initial_guess, initial_excitations)
+        b = self.init_trials(initial_guess, initial_excitations)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
             return initial_guess, initial_excitations
@@ -133,6 +161,7 @@ class QuantumChemistry(abc.ABC):
         solutions = {}
         residuals = {}
         excitations = [None]*roots
+        exresiduals = [None]*roots
         e2nn = {}
         s2nn = {}
         relative_residual_norm = {}
@@ -172,8 +201,10 @@ class QuantumChemistry(abc.ABC):
                     X = b@reduced_X
                     rn = np.linalg.norm(r)
                     xn = np.linalg.norm(X)
-                    relative_residual_norm[k] = rn/xn
+                    exresiduals[k] = (w, r)
                     excitations[k] = (w, X)
+                    relative_residual_norm[k] = rn/xn
+                    output += f"{i+1} {w:.6f} {rn:.5e} {xn:.5e}|"
 
             self.update(output)
 
@@ -181,7 +212,7 @@ class QuantumChemistry(abc.ABC):
                 print("Converged")
                 break
 
-            new_trials = self.setup_trials(residuals, td=td, b=b)
+            new_trials = self.setup_trials(residuals, exresiduals, td=td, b=b)
             b = bappend(b, new_trials)
             e2b = bappend(e2b, self.e2n(new_trials))
             s2b = bappend(s2b, self.s2n(new_trials))
