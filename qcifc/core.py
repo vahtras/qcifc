@@ -135,8 +135,8 @@ class QuantumChemistry(abc.ABC):
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
-    def pp_solve(self, roots):
-        _, excitations =  self.lr_solve(ops=(), freqs=(), roots=roots)
+    def pp_solve(self, roots, threshold=1e-5):
+        _, excitations =  self.lr_solve(ops=(), freqs=(), roots=roots, threshold=threshold)
         return excitations
 
     def lr_solve(
