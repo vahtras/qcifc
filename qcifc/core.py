@@ -107,7 +107,7 @@ class QuantumChemistry(abc.ABC):
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
-    def setup_trials(self, vectors, excitations=[], td=None, b=None, renormalize=True):
+    def setup_trials(self, vectors, excitations=[], td=None, tdx=None, b=None, renormalize=True):
         """
         Set up initial trial vectors from a set of intial guesses
         """
@@ -124,7 +124,10 @@ class QuantumChemistry(abc.ABC):
                     trials.append(swap(v))
 
         for w, X in excitations:
-            trials.append(X)
+            if tdx:
+                trials.append(X/tdx[w])
+            else:
+                trials.append(X)
             trials.append(swap(X))
 
         new_trials = np.array(trials).T
@@ -212,7 +215,8 @@ class QuantumChemistry(abc.ABC):
                 print("Converged")
                 break
 
-            new_trials = self.setup_trials(residuals, exresiduals, td=td, b=b)
+            tdx = {w: od-w*sd for w, _ in excitations}
+            new_trials = self.setup_trials(residuals, exresiduals, td=td, tdx=tdx, b=b)
             b = bappend(b, new_trials)
             e2b = bappend(e2b, self.e2n(new_trials))
             s2b = bappend(s2b, self.s2n(new_trials))
@@ -231,7 +235,6 @@ class QuantumChemistry(abc.ABC):
     def direct_ev_solver(self, n_states, E2=None, S2=None):
         if E2 is None or S2 is None:
             E2, S2 = self._get_E2S2()
-
         wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
         p = wn.argsort()
         wn = wn[p]

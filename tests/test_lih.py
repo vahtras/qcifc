@@ -290,4 +290,4 @@ class TestLiH(TestQC):
     def test_transition_moments(self, code):
         self.skip_if_not_implemented('transition_moments', code)
         transition_moments = code.transition_moments('z', 1)
-        npt.assert_allclose(transition_moments['z'], [4.4026842])
+        npt.assert_allclose(np.abs(transition_moments['z']), [0.54692108], atol=1e-5)
