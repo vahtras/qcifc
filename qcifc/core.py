@@ -167,8 +167,8 @@ class QuantumChemistry(abc.ABC):
         relative_residual_norm = {}
 
         self.update("|".join(
-            f"it  <<{op};{op}>>{freq}     rn      nn"
-            for op, freq in initial_guess
+            [f"it  <<{op};{op}>>{freq}     rn      nn" for op, freq in initial_guess] +
+            [f"it  w_{k+1}     rn      nn" for k in range(roots)]
             )
         )
 
