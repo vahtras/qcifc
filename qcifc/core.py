@@ -165,8 +165,6 @@ class QuantumChemistry(abc.ABC):
         residuals = {}
         excitations = [None]*roots
         exresiduals = [None]*roots
-        e2nn = {}
-        s2nn = {}
         relative_residual_norm = {}
 
         self.update("|".join(
@@ -182,18 +180,15 @@ class QuantumChemistry(abc.ABC):
                 v = V1[op]
                 reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
                 solutions[(op, freq)] = b@reduced_solution
-                e2nn[(op, freq)] = e2b@reduced_solution
-                s2nn[(op, freq)] = s2b@reduced_solution
+                residuals[(op, freq)] = (e2b - freq*s2b)@reduced_solution - v
 
-            # next residual
-            # for op, freq in initial_guess:
-                v = V1[op]
+                r = residuals[(op, freq)]
                 n = solutions[(op, freq)]
-                r = e2nn[(op, freq)] - freq*s2nn[(op, freq)] - v
-                residuals[(op, freq)] = r
+
                 nv = np.dot(n, v)
                 rn = np.linalg.norm(r)
                 nn = np.linalg.norm(n)
+
                 relative_residual_norm[(op, freq)] = rn / nn
                 output += f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|"
 
