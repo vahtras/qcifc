@@ -193,7 +193,7 @@ class QuantumChemistry(abc.ABC):
                 output += f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|"
 
             if roots > 0:
-                reduced_ev = self.direct_ev_solver(roots, b.T@e2b, b.T@s2b)
+                reduced_ev = self.direct_ev_solver2(roots, b.T@e2b, b.T@s2b)
                 for k, (w, reduced_X) in enumerate(reduced_ev):
                     r = (e2b - w*s2b)@reduced_X
                     X = b@reduced_X
@@ -228,6 +228,7 @@ class QuantumChemistry(abc.ABC):
         return solutions
 
     def direct_ev_solver(self, n_states, E2=None, S2=None):
+        #import pdb; pdb.set_trace()
         if E2 is None or S2 is None:
             E2, S2 = self._get_E2S2()
         wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
@@ -241,6 +242,18 @@ class QuantumChemistry(abc.ABC):
             norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
             Xn[:, i] /= norm
         return zip(wn[lo: hi], Xn[:, lo: hi].T)
+
+    def direct_ev_solver2(self, n_states, E2=None, S2=None):
+        if E2 is None or S2 is None:
+            E2, S2 = self._get_E2S2()
+        wn, Xn = np.linalg.eig((np.linalg.solve(E2, S2)))
+        p = list(reversed(wn.argsort()))
+        wn = wn[p]
+        Xn = Xn[:, p]
+        for i in range(n_states):
+            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
+            Xn[:, i] /= norm
+        return zip(1/wn[:n_states], Xn[:, :n_states].T)
 
     def _get_E2S2(self):
         dim = 2*len(list(self.get_excitations()))
