@@ -1,3 +1,4 @@
+import sys
 import pytest
 import numpy as np
 import pandas as pd
@@ -16,12 +17,24 @@ ids = get_codes_ids()
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestH2(TestQC):
 
-    def test_set_observer(self, code, capsys):
-        stream = OutputStream(print)
+    @pytest.mark.parametrize(
+        'data',
+        [
+            ([['yo']], ' yo  \n'),
+            ([['yo', 'ho']], ' yo   ho  \n'),
+            ([['yo', 'ho'], ['foo', 'bar']], ' yo   ho   foo  bar \n'),
+            ([['nv', 'rn'], [1.0, 0.01]], ' nv   rn   1.00 0.01\n'),
+        ]
+    )
+    def test_set_observer(self, code, capsys, data):
+        stream = OutputStream(sys.stdout.write, 5, 2)
         code.set_observer(stream)
-        code.update('yo')
+        indata, outdata = data
+        for d in indata:
+            code.update_observers(d)
+        code.reset_observers()
         captured = capsys.readouterr()
-        assert captured.out == 'yo\n'
+        assert captured.out == outdata
 
     def test_master(self, code):
         assert code.is_master()

@@ -10,13 +10,26 @@ class Observer(abc.ABC):
     def update(self):
         """update method"""
 
+    @abc.abstractmethod
+    def reset(self):
+        """reset method"""
+
 
 class OutputStream(Observer):
-    def __init__(self, stream):
+    def __init__(self, stream, width, d=6):
+        self.width = width
         self.stream = stream
+        self.d = d
 
-    def update(self, text):
-        self.stream(text)
+    def update(self, items):
+        for item in items:
+            if isinstance(item, float):
+                self.stream(f'{item:{self.width}.{self.d}f}')
+            else:
+                self.stream(f'{item:^{self.width}s}')
+
+    def reset(self):
+        self.stream('\n')
 
 
 class QuantumChemistry(abc.ABC):
@@ -32,9 +45,13 @@ class QuantumChemistry(abc.ABC):
     def set_observer(self, observer):
         self.observers.append(observer)
 
-    def update(self, text):
+    def reset_observers(self):
+        for o in self.observers:
+            o.reset()
+
+    def update_observers(self, items):
         for observer in self.observers:
-            observer.update(text)
+            observer.update(items)
 
     @abc.abstractmethod
     def get_overlap(self):  # pragma: no cover
@@ -63,8 +80,8 @@ class QuantumChemistry(abc.ABC):
         return self._da, self._db
 
     def initial_guess(
-        self, ops="xyz", freqs=(0,), roots=0, hessian_diagonal_shift=0.0001
-    ):
+            self, ops="xyz", freqs=(0,), roots=0, hessian_diagonal_shift=0.0001
+        ):
         od = self.get_orbital_diagonal(shift=hessian_diagonal_shift)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
@@ -167,11 +184,11 @@ class QuantumChemistry(abc.ABC):
         exresiduals = [None]*roots
         relative_residual_norm = {}
 
-        self.update("|".join(
-            [f"it  <<{op};{op}>>{freq}     rn      nn" for op, freq in initial_guess] +
-            [f"it  w_{k+1}     rn      nn" for k in range(roots)]
-            )
-        )
+        for op, freq in initial_guess:
+            self.update_observers([f"<<{op};{op}>>{freq}", "rn", "nn"])
+        for k in range(roots):
+            self.update_observers([f"w_{k+1}", 'rn', 'nn'])
+        self.reset_observers()
 
         for i in range(maxit):
             # next solution
@@ -190,7 +207,7 @@ class QuantumChemistry(abc.ABC):
                 nn = np.linalg.norm(n)
 
                 relative_residual_norm[(op, freq)] = rn / nn
-                output += f"{i+1} {-nv:.6f} {rn:.5e} {nn:.5e}|"
+                self.update_observers([nv, rn, nn])
 
             if roots > 0:
                 reduced_ev = self.direct_ev_solver2(roots, b.T@e2b, b.T@s2b)
@@ -202,9 +219,9 @@ class QuantumChemistry(abc.ABC):
                     exresiduals[k] = (w, r)
                     excitations[k] = (w, X)
                     relative_residual_norm[k] = rn/xn
-                    output += f"{i+1} {w:.6f} {rn:.5e} {xn:.5e}|"
+                    self.update_observers([w, rn, xn])
 
-            self.update(output)
+            self.reset_observers()
 
             if max(relative_residual_norm.values()) < threshold:
                 print("Converged")
