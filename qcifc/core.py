@@ -17,8 +17,8 @@ class Observer(abc.ABC):
 
 class OutputStream(Observer):
     def __init__(self, stream, width, d=6):
-        self.width = width
         self.stream = stream
+        self.width = width
         self.d = d
 
     def update(self, items):
@@ -69,9 +69,9 @@ class QuantumChemistry(abc.ABC):
         """Initialize scf state"""
 
     def cleanup_scf(self):
-        """Initialize scf calculation"""
+        """Clean-up after scf calculation"""
 
-    def set_densities(self, *das):
+    def _set_densities(self, *das):
         """Set densities"""
         self._da, self._db = das
 

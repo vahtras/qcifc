@@ -1,5 +1,5 @@
-import os
 import itertools
+import pathlib
 
 from mpi4py import MPI
 import numpy as np
@@ -80,14 +80,12 @@ class VeloxChem(QuantumChemistry):
         if self._overlap is not None:
             return self._overlap
 
-        overlap_driver = vlx.OverlapIntegralsDriver(
-            self.rank, self.size, self.comm
-        )
+        overlap_driver = vlx.OverlapIntegralsDriver(self.comm)
 
         mol = self.task.molecule
         bas = self.task.ao_basis
 
-        S = overlap_driver.compute(mol, bas, self.comm)
+        S = overlap_driver.compute(mol, bas)
         self._overlap = S.to_numpy()
 
         return self._overlap
@@ -96,30 +94,25 @@ class VeloxChem(QuantumChemistry):
         if self._dipoles is not None:
             return self._dipoles
 
-        dipole_driver = vlx.ElectricDipoleIntegralsDriver(
-            self.rank, self.size, self.comm
-        )
+        dipole_driver = vlx.ElectricDipoleIntegralsDriver(self.comm)
 
         mol = self.task.molecule
         bas = self.task.ao_basis
 
-        D = dipole_driver.compute(mol, bas, self.comm)
+        D = dipole_driver.compute(mol, bas)
         self._dipoles = D.x_to_numpy(), D.y_to_numpy(), D.z_to_numpy()
+
         return self._dipoles
 
     def get_one_el_hamiltonian(self):
-        kinetic_driver = vlx.KineticEnergyIntegralsDriver(
-            self.rank, self.size, self.comm
-        )
-        potential_driver = vlx.NuclearPotentialIntegralsDriver(
-            self.rank, self.size, self.comm
-        )
+        kinetic_driver = vlx.KineticEnergyIntegralsDriver(self.comm)
+        potential_driver = vlx.NuclearPotentialIntegralsDriver(self.comm)
 
         mol = self.task.molecule
         bas = self.task.ao_basis
 
-        T = kinetic_driver.compute(mol, bas, self.comm).to_numpy()
-        V = potential_driver.compute(mol, bas, self.comm).to_numpy()
+        T = kinetic_driver.compute(mol, bas).to_numpy()
+        V = potential_driver.compute(mol, bas).to_numpy()
 
         return T-V
 
@@ -128,21 +121,22 @@ class VeloxChem(QuantumChemistry):
         return mol.nuclear_repulsion_energy()
 
     def run_scf(self, mol, conv_thresh=1e-6):
-        self.scf_driver = vlx.ScfRestrictedDriver()
-        self.scf_driver.conv_thresh = conv_thresh
-        inp = str(f'{mol}.inp')
-        out = str(f'{mol}.out')
-        cwd = os.getcwd()
-        os.chdir(self.get_workdir())
+        inp = str(pathlib.Path(self.get_workdir())/f'{mol}.inp')
+        out = str(pathlib.Path(self.get_workdir())/f'{mol}.out')
         self.task = vlx.MpiTask((inp, out), self.comm)
-        self.scf_driver.compute_task(self.task)
-        os.chdir(cwd)
+        self.scf_driver = vlx.ScfRestrictedDriver(self.comm, self.task.ostream)
+        self.scf_driver.conv_thresh = conv_thresh
+        self.scf_driver.compute(
+            self.task.molecule,
+            self.task.ao_basis,
+            self.task.min_basis
+        )
 
     def get_mo(self):
         mos = self.scf_driver.mol_orbs.alpha_to_numpy()
         return mos
 
-    def set_densities(self, da, db):
+    def __set_densities(self, da, db):
         from veloxchem import denmat
         self._da = vlx.AODensityMatrix(
             [np.array(da), np.array(db)], denmat.rest
@@ -175,12 +169,17 @@ class VeloxChem(QuantumChemistry):
             fock.set_fock_type(fockmat.rgenjk, i)
             fock.set_fock_type(fockmat.rgenk, i+1)
 
-        eri_driver = vlx.ElectronRepulsionIntegralsDriver(
-            self.rank, self.size, self.comm
+        eri_driver = vlx.ElectronRepulsionIntegralsDriver(self.comm)
+
+        qq_data = eri_driver.compute(
+            vlx.qqscheme.get_qq_scheme(self.scf_driver.qq_type),
+            self.scf_driver.eri_thresh,
+            mol,
+            bas
         )
-        screening = eri_driver.compute(vlx.ericut.qqden, 1.0e-15, mol, bas)
-        eri_driver.compute(vlx.ericut.qqden, 1.0e-15, mol, bas)
-        eri_driver.compute(fock, dens, mol, bas, screening, self.comm)
+
+        eri_driver.compute(fock, dens, mol, bas, qq_data)
+
         fock.reduce_sum(self.rank, self.size, self.comm)
 
         fabs = []

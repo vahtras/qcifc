@@ -87,11 +87,12 @@ class TestH2(TestQC):
         except AssertionError:
             npt.assert_allclose(-cmo, expected)
 
+    @pytest.mark.skip('deprecated')
     def test_set_get_dens_a(self, code):
         """Set density test"""
         da = [[1., 0.], [0., 1.]]
         db = [[1., 0.], [0., 0.]]
-        code.set_densities(da, db)
+        code._set_densities(da, db)
         da1, db1 = code.get_densities()
         npt.assert_allclose(da1, da)
         npt.assert_allclose(db1, db)
