@@ -300,6 +300,18 @@ class QuantumChemistry(abc.ABC):
             final.append((w[(i, a)], Xn))
         return final
 
+    def transition_moments(self, ops, roots, **kwargs):
+        solutions = list(self.pp_solve(roots, **kwargs))
+        V1 = {op: V for op, V in zip(ops, self.get_rhs(*ops))}
+        tms = {op: np.array([np.dot(V1[op], s[1]) for s in solutions]) for op in ops}
+        tms['w'] = np.array([s[0] for s in solutions])
+        return tms
+
+    def oscillator_strengths(self, roots, **kwargs):
+        tms = self.transition_moments('xyz', roots, **kwargs)
+        osc = 2/3*tms['w']*(tms['x']**2 + tms['y']**2 + tms['z']**2)
+        return {'w': tms['w'], 'I': osc}
+
 
 def swap(xy):
     """

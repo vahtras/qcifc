@@ -17,6 +17,10 @@ ids = get_codes_ids()
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestH2(TestQC):
 
+    def test_setup_attr(self, code):
+        code.setup(foo='bar')
+        assert code.foo == 'bar'
+
     @pytest.mark.parametrize(
         'data',
         [

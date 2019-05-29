@@ -342,11 +342,5 @@ class VeloxChemDummy(VeloxChem):
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
         return self.direct_lr_solver(ops, freqs, **kwargs), []
 
-    def pp_solve(self, n_states):
-        return self.direct_ev_solver(n_states)
-
-    def transition_moments(self, ops, n_states):
-        solutions = list(self.pp_solve(n_states))
-        V1 = {op: V for op, V in zip(ops, self.get_rhs(*ops))}
-        tms = {op: [np.dot(V1[op], s[1]) for s in solutions] for op in ops}
-        return tms
+    def pp_solve(self, roots, **kwargs):
+        return self.direct_ev_solver(roots)
