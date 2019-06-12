@@ -393,21 +393,6 @@ class TestH2(TestQC):
         for k, v in lr.items():
             npt.assert_allclose(v, expected[k])
 
-    @pytest.mark.parametrize(
-        'args',
-        [
-            ('z', 1, {'z': [1.1946797]}),
-        ],
-        ids=['z1', ]
-    )
-    def test_pp(self, code, args):
-        self.skip_if_not_implemented('pp', code)
-
-        aops, nfreqs, expected = args
-        pp = code.pp(aops, nfreqs)
-        for op, excitation_energies in pp.items():
-            npt.assert_allclose(excitation_energies, expected[op])
-
     def test_get_excitations(self, code):
         assert list(code.get_excitations()) == [(0, 1)]
 
@@ -465,6 +450,11 @@ class TestH2(TestQC):
         self.skip_if_not_implemented('transition_moments', code)
         transition_moments = code.transition_moments('z', 1)
         npt.assert_allclose(transition_moments['z'], [1.1946797])
+
+    def test_oscillator_strengths(self, code):
+        self.skip_if_not_implemented('oscillator_strengths', code)
+        oscillator_strengths = code.oscillator_strengths(1)
+        npt.assert_allclose(oscillator_strengths['I'], [0.88578972])
 
     def test_dim(self, code):
         self.skip_if_not_implemented('response_dim', code)

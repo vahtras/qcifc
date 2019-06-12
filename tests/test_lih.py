@@ -244,8 +244,8 @@ class TestLiH(TestQC):
     def test_excitation_energies(self, code):
         self.skip_if_not_implemented('excitation_energies', code)
 
-        w, = code.excitation_energies(1)
-        assert w == pytest.approx(0.16179567)
+        w = code.excitation_energies(3)
+        npt.assert_allclose(w, [0.16179567, 0.22270771, 0.22270771], atol=1e-5)
 
     def test_eigenvectors(self, code):
         self.skip_if_not_implemented('eigenvectors', code)
@@ -289,5 +289,18 @@ class TestLiH(TestQC):
 
     def test_transition_moments(self, code):
         self.skip_if_not_implemented('transition_moments', code)
-        transition_moments = code.transition_moments('z', 1)
-        npt.assert_allclose(np.abs(transition_moments['z']), [0.54692108], atol=1e-5)
+        transition_moments = code.transition_moments('xyz', 3)
+        npt.assert_allclose(
+            np.abs(transition_moments['z']),
+            [0.54692108, 0, 0],
+            atol=1e-5
+        )
+
+    def test_oscillator_strengths(self, code):
+        self.skip_if_not_implemented('oscillator_strengths', code)
+        oscillator_strengths = code.oscillator_strengths(3)['I']
+        npt.assert_allclose(
+            oscillator_strengths,
+            [0.0322645017, 0.2543398498, 0.2543398498],
+            atol=1e-5
+        )

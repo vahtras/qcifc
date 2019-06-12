@@ -21,15 +21,22 @@ class OutputStream(Observer):
         self.width = width
         self.d = d
 
-    def update(self, items):
+    def update(self, items, **kwargs):
+        converged = kwargs.get('converged')
         for item in items:
-            if isinstance(item, float):
-                self.stream(f'{item:{self.width}.{self.d}f}')
+            if not converged:
+                if isinstance(item, float):
+                    self.stream(f'{item:{self.width}.{self.d}f}')
+                else:
+                    self.stream(f'{item:^{self.width}s}')
             else:
-                self.stream(f'{item:^{self.width}s}')
+                self.stream(self.green(f'{item:{self.width}.{self.d}f}'))
 
     def reset(self):
         self.stream('\n')
+
+    def green(self, text):
+        return f"\033[32m{text}\033[00m"
 
 
 class QuantumChemistry(abc.ABC):
@@ -49,9 +56,9 @@ class QuantumChemistry(abc.ABC):
         for o in self.observers:
             o.reset()
 
-    def update_observers(self, items):
+    def update_observers(self, items, **kwargs):
         for observer in self.observers:
-            observer.update(items)
+            observer.update(items, **kwargs)
 
     @abc.abstractmethod
     def get_overlap(self):  # pragma: no cover
@@ -207,7 +214,7 @@ class QuantumChemistry(abc.ABC):
                 nn = np.linalg.norm(n)
 
                 relative_residual_norm[(op, freq)] = rn / nn
-                self.update_observers([nv, rn, nn])
+                self.update_observers([nv, rn, nn], converged=(rn/nn < threshold))
 
             if roots > 0:
                 reduced_ev = self.direct_ev_solver2(roots, b.T@e2b, b.T@s2b)
@@ -219,7 +226,7 @@ class QuantumChemistry(abc.ABC):
                     exresiduals[k] = (w, r)
                     excitations[k] = (w, X)
                     relative_residual_norm[k] = rn/xn
-                    self.update_observers([w, rn, xn])
+                    self.update_observers([w, rn, xn], converged=(rn/xn < threshold))
 
             self.reset_observers()
 
@@ -245,10 +252,9 @@ class QuantumChemistry(abc.ABC):
         return solutions
 
     def direct_ev_solver(self, n_states, E2=None, S2=None):
-        #import pdb; pdb.set_trace()
         if E2 is None or S2 is None:
             E2, S2 = self._get_E2S2()
-        wn, Xn = np.linalg.eig((np.linalg.solve(S2, E2)))
+        wn, Xn = np.linalg.eigh((np.linalg.solve(S2, E2)))
         p = wn.argsort()
         wn = wn[p]
         Xn = Xn[:, p]
@@ -263,13 +269,14 @@ class QuantumChemistry(abc.ABC):
     def direct_ev_solver2(self, n_states, E2=None, S2=None):
         if E2 is None or S2 is None:
             E2, S2 = self._get_E2S2()
-        wn, Xn = np.linalg.eig((np.linalg.solve(E2, S2)))
+        T = np.linalg.solve(E2, S2)
+        wn, Xn = np.linalg.eig(T)
         p = list(reversed(wn.argsort()))
         wn = wn[p]
         Xn = Xn[:, p]
-        for i in range(n_states):
-            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
-            Xn[:, i] /= norm
+        #for i in range(n_states):
+        #    norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
+        #    Xn[:, i] /= norm
         return zip(1/wn[:n_states], Xn[:, :n_states].T)
 
     def _get_E2S2(self):
@@ -312,6 +319,12 @@ class QuantumChemistry(abc.ABC):
         osc = 2/3*tms['w']*(tms['x']**2 + tms['y']**2 + tms['z']**2)
         return {'w': tms['w'], 'I': osc}
 
+    def excitation_energies(self, n_states):
+        return tuple(w for w, _ in self.pp_solve(n_states))
+
+    def eigenvectors(self, n_states):
+        return np.array([X for _, X in self.pp_solve(n_states)]).T
+
 
 def swap(xy):
     """
@@ -344,13 +357,13 @@ def truncate(basis, threshold=1e-10):
     Returns truncated transformed basis
     """
     Sb = basis.T@basis
-    l, T = np.linalg.eig(Sb)
+    l, T = np.linalg.eigh(Sb)
     b_norm = np.sqrt(Sb.diagonal())
     mask = l > threshold*b_norm
     return basis @ T[:, mask]
 
 
 def lowdin_normalize(basis):
-    l, T = np.linalg.eig(basis.T@basis)
+    l, T = np.linalg.eigh(basis.T@basis)
     inverse_sqrt = (T*np.sqrt(1/l)) @ T.T
     return basis@inverse_sqrt

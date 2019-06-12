@@ -180,27 +180,5 @@ class DaltonFactoryDummy(DaltonFactory):
     def lr_solve(self, ops="xyz", freqs=(0.), **kwargs):
         return self.direct_lr_solver(ops, freqs, **kwargs), []
 
-    def pp(self, ops="xyz", nfreqs=0, **kwargs):
-        V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        E2, S2 = self._get_E2S2()
-        Xn = self.eigenvectors(nfreqs)
-        solutions = {
-            op: [np.dot(Xn[:, i], V1[op]) for i in range(nfreqs)]
-            for op in ops
-        }
-        return solutions
-
     def pp_solve(self, n_states):
         return self.direct_ev_solver(n_states)
-
-    def transition_moments(self, ops, n_states):
-        solutions = list(self.pp_solve(n_states))
-        V1 = {op: V for op, V in zip(ops, self.get_rhs(*ops))}
-        tms = {op: [np.dot(V1[op], s[1]) for s in solutions] for op in ops}
-        return tms
-
-    def excitation_energies(self, n_states):
-        return tuple(w for w, _ in self.direct_ev_solver(n_states))
-
-    def eigenvectors(self, n_states):
-        return np.array([X for _, X in self.direct_ev_solver(n_states)]).T
