@@ -343,4 +343,4 @@ class VeloxChemDummy(VeloxChem):
         return self.direct_lr_solver(ops, freqs, **kwargs), []
 
     def pp_solve(self, roots, **kwargs):
-        return self.direct_ev_solver(roots)
+        return self.direct_ev_solver2(roots)

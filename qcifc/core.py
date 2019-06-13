@@ -274,9 +274,9 @@ class QuantumChemistry(abc.ABC):
         p = list(reversed(wn.argsort()))
         wn = wn[p]
         Xn = Xn[:, p]
-        #for i in range(n_states):
-        #    norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
-        #    Xn[:, i] /= norm
+        for i in range(n_states):
+            norm = np.sqrt(Xn[:, i].T@S2@Xn[:, i])
+            Xn[:, i] /= norm
         return zip(1/wn[:n_states], Xn[:, :n_states].T)
 
     def _get_E2S2(self):
@@ -320,7 +320,7 @@ class QuantumChemistry(abc.ABC):
         return {'w': tms['w'], 'I': osc}
 
     def excitation_energies(self, n_states):
-        return tuple(w for w, _ in self.pp_solve(n_states))
+        return np.array([w for w, _ in self.pp_solve(n_states)])
 
     def eigenvectors(self, n_states):
         return np.array([X for _, X in self.pp_solve(n_states)]).T

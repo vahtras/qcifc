@@ -181,4 +181,4 @@ class DaltonFactoryDummy(DaltonFactory):
         return self.direct_lr_solver(ops, freqs, **kwargs), []
 
     def pp_solve(self, n_states):
-        return self.direct_ev_solver(n_states)
+        return self.direct_ev_solver2(n_states)
