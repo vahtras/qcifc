@@ -171,13 +171,13 @@ class QuantumChemistry(abc.ABC):
     ):
 
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
-        initial_guess = self.initial_guess(ops=ops, freqs=freqs)
+        solutions = self.initial_guess(ops=ops, freqs=freqs)
         initial_excitations = self.initial_excitations(roots)
 
-        b = self.init_trials(initial_guess, initial_excitations)
+        b = self.init_trials(solutions, initial_excitations)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
-            return initial_guess, initial_excitations
+            return solutions, initial_excitations
         e2b = self.e2n(b)
         s2b = self.s2n(b)
 
@@ -185,13 +185,12 @@ class QuantumChemistry(abc.ABC):
         sd = self.get_overlap_diagonal()
         td = {w: od - w*sd for w in freqs}
 
-        solutions = {}
         residuals = {}
         excitations = [None]*roots
         exresiduals = [None]*roots
         relative_residual_norm = {}
 
-        for op, freq in initial_guess:
+        for op, freq in solutions:
             self.update_observers([f"<<{op};{op}>>{freq}", "rn", "nn"])
         for k in range(roots):
             self.update_observers([f"w_{k+1}", 'rn', 'nn'])
@@ -200,7 +199,7 @@ class QuantumChemistry(abc.ABC):
         for i in range(maxit):
             # next solution
             output = ""
-            for op, freq in initial_guess:
+            for op, freq in solutions:
                 v = V1[op]
                 reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
                 solutions[(op, freq)] = b@reduced_solution
