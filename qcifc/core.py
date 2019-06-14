@@ -141,7 +141,7 @@ class QuantumChemistry(abc.ABC):
         trials = []
         for (op, freq) in vectors:
             if converged[(op, freq)]:
-                pass
+                continue
             vec = vectors[(op, freq)]
             if td is not None:
                 v = vec/td[freq]
@@ -152,7 +152,9 @@ class QuantumChemistry(abc.ABC):
                 if freq > SMALL:
                     trials.append(swap(v))
 
-        for w, X in excitations:
+        for k, (w, X) in enumerate(excitations):
+            if converged[k]:
+                continue
             if tdx:
                 trials.append(X/tdx[w])
             else:
