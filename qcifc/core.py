@@ -23,6 +23,7 @@ class OutputStream(Observer):
 
     def update(self, items, **kwargs):
         converged = kwargs.get('converged')
+        info = kwargs.get('info')
         for item in items:
             if not converged:
                 if isinstance(item, float):
@@ -31,6 +32,8 @@ class OutputStream(Observer):
                     self.stream(f'{item:^{self.width}s}')
             else:
                 self.stream(self.green(f'{item:{self.width}.{self.d}f}'))
+        if info:
+            self.stream(f'{info:^{self.width}s}')
 
     def reset(self):
         self.stream('\n')
@@ -131,12 +134,14 @@ class QuantumChemistry(abc.ABC):
             new_trials = lowdin_normalize(truncated)
         return new_trials
 
-    def setup_trials(self, vectors, excitations=[], td=None, tdx=None, b=None, renormalize=True):
+    def setup_trials(self, vectors, excitations=[], converged={}, td=None, tdx=None, b=None, renormalize=True):
         """
         Set up initial trial vectors from a set of intial guesses
         """
         trials = []
         for (op, freq) in vectors:
+            if converged[(op, freq)]:
+                pass
             vec = vectors[(op, freq)]
             if td is not None:
                 v = vec/td[freq]
@@ -188,15 +193,19 @@ class QuantumChemistry(abc.ABC):
         residuals = {}
         exresiduals = [None]*roots
         relative_residual_norm = {}
+        converged = {}
 
+        self.update_observers([], info='It')
         for op, freq in solutions:
             self.update_observers([f"<<{op};{op}>>{freq}", "rn", "nn"])
         for k in range(roots):
             self.update_observers([f"w_{k+1}", 'rn', 'nn'])
+        self.update_observers([], info='dim')
         self.reset_observers()
 
         for i in range(maxit):
             # next solution
+            self.update_observers([], info=f'{i+1}')
             output = ""
             for op, freq in solutions:
                 v = V1[op]
@@ -212,7 +221,8 @@ class QuantumChemistry(abc.ABC):
                 nn = np.linalg.norm(n)
 
                 relative_residual_norm[(op, freq)] = rn / nn
-                self.update_observers([nv, rn, nn], converged=(rn/nn < threshold))
+                converged[(op, freq)] = rn / nn < threshold
+                self.update_observers([nv, rn, nn], converged=converged[(op, freq)])
 
             if roots > 0:
                 reduced_ev = self.direct_ev_solver2(roots, b.T@e2b, b.T@s2b)
@@ -224,8 +234,10 @@ class QuantumChemistry(abc.ABC):
                     exresiduals[k] = (w, r)
                     excitations[k] = (w, X)
                     relative_residual_norm[k] = rn/xn
-                    self.update_observers([w, rn, xn], converged=(rn/xn < threshold))
+                    converged[k] = rn/xn < threshold
+                    self.update_observers([w, rn, xn], converged=converged[k])
 
+            self.update_observers([], info=f'({len(b.T)})')
             self.reset_observers()
 
             if max(relative_residual_norm.values()) < threshold:
@@ -233,7 +245,7 @@ class QuantumChemistry(abc.ABC):
                 break
 
             tdx = {w: od-w*sd for w, _ in excitations}
-            new_trials = self.setup_trials(residuals, exresiduals, td=td, tdx=tdx, b=b)
+            new_trials = self.setup_trials(residuals, exresiduals, converged, td=td, tdx=tdx, b=b)
             b = bappend(b, new_trials)
             e2b = bappend(e2b, self.e2n(new_trials))
             s2b = bappend(s2b, self.s2n(new_trials))
