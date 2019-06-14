@@ -172,12 +172,12 @@ class QuantumChemistry(abc.ABC):
 
         V1 = {op: v for op, v in zip(ops, self.get_rhs(*ops))}
         solutions = self.initial_guess(ops=ops, freqs=freqs)
-        initial_excitations = self.initial_excitations(roots)
+        excitations = self.initial_excitations(roots)
 
-        b = self.init_trials(solutions, initial_excitations)
+        b = self.init_trials(solutions, excitations)
         # if the set of trial vectors is null we return the initial guess
         if not np.any(b):
-            return solutions, initial_excitations
+            return solutions, excitations
         e2b = self.e2n(b)
         s2b = self.s2n(b)
 
@@ -186,7 +186,6 @@ class QuantumChemistry(abc.ABC):
         td = {w: od - w*sd for w in freqs}
 
         residuals = {}
-        excitations = [None]*roots
         exresiduals = [None]*roots
         relative_residual_norm = {}
 
