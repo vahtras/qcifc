@@ -16,3 +16,9 @@ errors.err
 .idea
 .pytest_cache
 *.h5
+*AO*
+DALTON.*
+SIR*
+RSP*
+molden.inp
+.vscode

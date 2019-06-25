@@ -1,6 +1,7 @@
 """Abstract interfact to QM codes"""
 import abc
 import numpy as np
+from . import normalizer
 
 SMALL = 1e-10
 
@@ -48,6 +49,10 @@ class QuantumChemistry(abc.ABC):
     def setup(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+        self.set_normalizer(normalizer.Lowdin())
+
+    def set_normalizer(self, nzr):
+        self.normalizer = nzr
 
     def is_master(self):
         return True
@@ -130,8 +135,8 @@ class QuantumChemistry(abc.ABC):
         if b is not None:
             new_trials = new_trials - b@b.T@new_trials
         if trials and renormalize:
-            truncated = truncate(new_trials)
-            new_trials = lowdin_normalize(truncated)
+            #truncated = truncate(new_trials)
+            new_trials = self.normalizer.normalize(new_trials)
         return new_trials
 
     def setup_trials(self, vectors, excitations=[], converged={}, td=None, tdx=None, b=None, renormalize=True):
@@ -281,6 +286,8 @@ class QuantumChemistry(abc.ABC):
     def direct_ev_solver2(self, n_states, E2=None, S2=None):
         if E2 is None or S2 is None:
             E2, S2 = self._get_E2S2()
+        E2 = (E2 + E2.T)/2
+        S2 = (S2 + S2.T)/2
         T = np.linalg.solve(E2, S2)
         wn, Xn = np.linalg.eig(T)
         p = list(reversed(wn.argsort()))
