@@ -1,5 +1,5 @@
 *.pyc
-/venv*
+.venv*
 *egg*
 htmlcov
 .cache
@@ -22,3 +22,4 @@ SIR*
 RSP*
 molden.inp
 .vscode
+old

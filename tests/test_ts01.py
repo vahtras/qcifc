@@ -10,8 +10,8 @@ codes_settings = get_codes_settings(CASE)
 ids = get_codes_ids()
 
 
-@pytest.mark.skip('skip open shell')
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
+@pytest.mark.skip()
 class TestTS01(TestQC):
 
     @pytest.mark.skip('redefined')
@@ -153,3 +153,18 @@ class TestTS01(TestQC):
         lr = code.lr(aops, bops, freqs)
         for k, v in lr.items():
             npt.assert_allclose(v, expected[k], rtol=1e-4)
+
+
+@pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
+class TestSCF(TestQC):
+    def test_roothan_rohf(self, code):
+        final_energy, final_norm = code.run_roothan_iterations(
+            CASE,
+            electrons=19,
+            max_iterations=20,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        assert final_energy == pytest.approx(-455.591114652976)
+        assert final_norm < 1e-5

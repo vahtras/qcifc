@@ -10,10 +10,10 @@ from qcifc.dalton_factory import DaltonFactoryDummy, DaltonFactory
 from qcifc.vlx import VeloxChem, VeloxChemDummy
 
 codes = {
-    'dummy': DaltonFactoryDummy,
+    #'dummy': DaltonFactoryDummy,
     'dalton': DaltonFactory,
-    'vlx': VeloxChem,
-    'vlxdummy': VeloxChemDummy,
+    #'vlx': VeloxChem,
+    #'vlxdummy': VeloxChemDummy,
 }
 
 

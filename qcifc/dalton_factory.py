@@ -3,7 +3,9 @@ import subprocess
 
 import numpy as np
 
-from daltools import one, sirrst, sirifc, prop, rspvec, oli
+from daltools import one, sirrst, sirifc, prop, rspvec
+from dalmisc import oli
+from dalmisc.scf_iter import RoothanIterator, URoothanIterator
 import two.core
 
 from .core import QuantumChemistry
@@ -33,6 +35,9 @@ class DaltonFactory(QuantumChemistry):
             "OVERLAP",
             os.path.join(self.get_workdir(), "AOONEINT")
             ).unpack().unblock()
+
+    def get_densities(self, ifcfile="SIRIFC"):
+        return oli.get_densities(ifcfile)
 
     def get_one_el_hamiltonian(self):
         """Get one-electron Hamiltonian"""
@@ -79,12 +84,15 @@ class DaltonFactory(QuantumChemistry):
 
     def get_orbital_diagonal(self, filename=None, shift=0.):
         ifc = self._sirifc()
-        fc = ifc.fc.unblock()
-
-        od = []
-        for i in range(ifc.nisht):
-            for a in range(ifc.nisht, ifc.norbt):
-                od.append(2*(fc[a, a] - fc[i, i]))
+        try:
+            od = ifc.orbdiag * .5
+        except sirifc.LabelNotFound:
+            print("Fix me")
+            od = []
+            fc = ifc.fc.unblock()
+            for i in range(ifc.nisht):
+                for a in range(ifc.nisht, ifc.norbt):
+                    od.append(2*(fc[a, a] - fc[i, i]))
         return np.append(od, od) + shift
 
     def get_overlap_diagonal(self, filename=None):
@@ -157,6 +165,18 @@ class DaltonFactory(QuantumChemistry):
         )
         subprocess.call(['tar', 'xvfz', f'hf_{mol}.tar.gz'])
         os.chdir(cwd)
+
+    def run_roothan_iterations(self, mol, **kwargs):
+        self.roothan = RoothanIterator(**kwargs)
+        for i, (e, gn) in enumerate(self.roothan):
+            print(f'{i:2d}: {e:14.10f} {gn:.3e}')
+        return e, gn
+
+    def run_uroothan_iterations(self, mol, **kwargs):
+        roothan = URoothanIterator(**kwargs)
+        for i, (e, gn) in enumerate(roothan):
+            print(f'{i:2d}: {e:14.10f} {gn:.3e}')
+        return e, gn
 
     def cleanup_scf(self):
         subprocess.call(

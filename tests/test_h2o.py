@@ -13,7 +13,6 @@ ids = get_codes_ids()
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestH2O(TestQC):
 
-
     @pytest.mark.parametrize(
         'args',
         [
