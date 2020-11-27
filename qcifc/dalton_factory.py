@@ -1,14 +1,15 @@
+from collections import deque
 import os
 import subprocess
 
 import numpy as np
 
-from daltools import one, sirrst, sirifc, prop, rspvec
-from dalmisc import oli
-from dalmisc.scf_iter import RoothanIterator, URoothanIterator
+from daltools import one, sirrst, sirifc, prop, rspvec, dens
+from dalmisc import oli, rohf
+from dalmisc.scf_iter import URoothanIterator
 import two.core
 
-from .core import QuantumChemistry
+from .core import QuantumChemistry, RoothanIterator
 
 
 class DaltonFactory(QuantumChemistry):
@@ -166,15 +167,21 @@ class DaltonFactory(QuantumChemistry):
         subprocess.call(['tar', 'xvfz', f'hf_{mol}.tar.gz'])
         os.chdir(cwd)
 
-    def run_roothan_iterations(self, mol, **kwargs):
-        self.roothan = RoothanIterator(**kwargs)
-        for i, (e, gn) in enumerate(self.roothan):
-            print(f'{i:2d}: {e:14.10f} {gn:.3e}')
-        return e, gn
+    def set_roothan_iterator(self, mol, **kwargs):
+        self.roothan = DaltonRoothanIterator(**kwargs)
+
+    def set_diis_iterator(self, mol, **kwargs):
+        self.diis = DiisIterator(**kwargs)
 
     def run_uroothan_iterations(self, mol, **kwargs):
         roothan = URoothanIterator(**kwargs)
         for i, (e, gn) in enumerate(roothan):
+            print(f'{i:2d}: {e:14.10f} {gn:.3e}')
+        return e, gn
+
+    def run_diis_iterations(self, mol, **kwargs):
+        diis = DiisIterator(**kwargs)
+        for i, (e, gn) in enumerate(diis):
             print(f'{i:2d}: {e:14.10f} {gn:.3e}')
         return e, gn
 
@@ -202,3 +209,115 @@ class DaltonFactoryDummy(DaltonFactory):
 
     def pp_solve(self, n_states):
         return self.direct_ev_solver2(n_states)
+
+
+class DaltonRoothanIterator(RoothanIterator):
+
+    def __iter__(self):
+        """
+        Initial setup for SCF iterations
+        """
+        self.na = (self.nel + 2*self.ms)//2
+        self.nb = (self.nel - 2*self.ms)//2
+
+        AOONEINT = os.path.join(self.tmpdir, 'AOONEINT')
+        self.Z = one.readhead(AOONEINT)['potnuc']
+        self.h1 = one.read(
+            label='ONEHAMIL', filename=AOONEINT
+        ).unpack().unblock()
+        self.S = one.read(
+            label='OVERLAP', filename=AOONEINT
+        ).unpack().unblock()
+        if self.C is None:
+            self.Ca = dens.cmo(self.h1, self.S)
+            self.Cb = self.Ca
+            self.C = (self.Ca, self.Cb)
+
+        return self
+
+    def set_densities(self):
+        Ca, Cb = self.C
+        self.Da = dens.C1D(Ca, self.na)
+        self.Db = dens.C1D(Cb, self.nb)
+
+    def set_focks(self):
+        AOTWOINT = os.path.join(self.tmpdir, 'AOTWOINT')
+        (self.Fa, self.Fb), = two.core.fockab(
+            (self.Da, self.Db),
+            filename=AOTWOINT
+        )
+
+    def update_mo(self):
+
+        F = self.Feff()
+        Ca = dens.cmo(F, self.S)
+        Cb = Ca
+        self.C = Ca, Cb
+
+    def Feff2(self):
+        Fa = self.S.I@(self.h1 + self.Fa)
+        Fb = self.S.I@(self.h1 + self.Fb)
+        Da = self.Da@self.S
+        Db = self.Db@self.S
+        return self.S@rohf.Feff(Da, Db, Fa, Fb)
+
+
+class DiisIterator(RoothanIterator):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.evecs = deque()
+        self.vecs = deque()
+        self.max_vecs = kwargs.get('max_vecs', 2)
+
+    def __next__(self):
+        """
+        Updates for in a SCF iteration
+        """
+        if not self.converged() and self.it < self.max_iterations:
+            self.it += 1
+            self.set_densities()
+            self.set_focks()
+            e = self.energy()
+            gn = self.gn()
+
+            self.vecs.append(self.Feff())
+            self.evecs.append(self.ga + self.gb)
+            if len(self.vecs) > self.max_vecs:
+                self.vecs.popleft()
+                self.evecs.popleft()
+
+            self.update_mo()
+            self.energies.append(e)
+            self.gradient_norms.append(gn)
+            return (e, gn)
+        else:
+            raise StopIteration
+
+    def B(self):
+        dim = len(self.evecs) + 1
+        Bmat = np.ones((dim, dim))
+        for i, vi in enumerate(self.evecs):
+            for j, vj in enumerate(self.evecs):
+                Bmat[i, j] = 4*(vi & (self.S.I@vj@self.S.I))
+
+        Bmat[-1, -1] = 0
+        return Bmat
+
+    def c(self):
+        rhs = np.zeros(len(self.evecs) + 1)
+        rhs[-1] = 1.0
+        return np.linalg.solve(self.B(), rhs)[:-1]
+
+    def Fopt(self):
+        return sum(
+            c*e
+            for c, e in zip(self.c(), self.vecs)
+        )
+
+    def update_mo(self):
+
+        F = self.Fopt()
+        Ca = dens.cmo(F, self.S)
+        Cb = Ca
+        self.C = Ca, Cb

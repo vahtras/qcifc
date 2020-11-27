@@ -1,6 +1,11 @@
-"""Abstract interfact to QM codes"""
+"""Abstract interface to QM codes"""
 import abc
+from fractions import Fraction
+import math
+import os
+
 import numpy as np
+
 from . import normalizer
 
 SMALL = 1e-10
@@ -343,6 +348,115 @@ class QuantumChemistry(abc.ABC):
 
     def eigenvectors(self, n_states):
         return np.array([X for _, X in self.pp_solve(n_states)]).T
+
+    def run_roothan_iterations(self):
+        for i, (e, gn) in enumerate(self.roothan):
+            print(f'{i:2d}: {e:14.10f} {gn:.3e}')
+        return e, gn
+
+
+class SCFIterator():
+    def __init__(self):
+        self.energies = []
+        self.gradient_norms = []
+
+
+class RoothanIterator(SCFIterator):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.it = 0
+        self.max_iterations = kwargs.get('max_iterations', 20)
+        self.threshold = kwargs.get('threshold', 1e-5)
+        self.C = kwargs.get('C0', None)
+        if isinstance(self.C, np.ndarray):
+            self.C = (self.C, self.C)
+        self.tmpdir = kwargs.get('tmpdir', '/tmp')
+        self.nel = kwargs.get('electrons', 0)
+        self.ms = Fraction(kwargs.get('ms', 0))
+        self.Z = None
+        self.h1 = None
+        self.S = None
+        self.Fa = None
+        self.Fb = None
+        self.Da = None
+        self.Db = None
+        self.ga = None
+        self.gb = None
+        self.rohf_factors = kwargs.get('factors', (1.0, 1.0))
+
+    def __next__(self):
+        """
+        Updates for in a SCF iteration
+        """
+        if not self.converged() and self.it < self.max_iterations:
+            self.it += 1
+            self.set_densities()
+            self.set_focks()
+            e = self.energy()
+            gn = self.gn()
+            self.update_mo()
+            self.energies.append(e)
+            self.gradient_norms.append(gn)
+            return (e, gn)
+        else:
+            raise StopIteration
+
+    def energy(self):
+        e1 = self.h1 & (self.Da + self.Db)
+        e2 = 0.5*((self.Da & self.Fa) + (self.Db & self.Fb))
+        return e1 + e2 + self.Z
+
+    def gn(self):
+        Fa = self.h1 + self.Fa
+        Fb = self.h1 + self.Fb
+        Da = self.Da
+        Db = self.Db
+        S = self.S
+
+        self.ga = ga = S@Da@Fa - Fa@Da@S
+        self.gb = gb = S@Db@Fb - Fb@Db@S
+
+        gn = 2*((ga + gb) & (S.I@(ga + gb)@S.I))
+
+        return math.sqrt(gn)
+
+    def Feff(self):
+
+        F = self.h1 + (self.Fa + self.Fb)/2
+        S = self.S
+
+        Da = self.Da
+        Db = self.Db
+        Fa = self.h1 + self.Fa
+        Fb = self.h1 + self.Fb
+
+        ga = S @ Da @ Fa - Fa @ Da @ S
+        gb = S @ Db @ Fb - Fb @ Db @ S
+        g = ga + gb
+
+        inactive = Db
+        active = Da - Db
+        virtual = S.I - Da
+
+        # factor_pq = (1.0, 1.0)
+        projectors = [(inactive, active), (active, virtual)]
+        factors = self.rohf_factors
+
+        if self.ms != 0 and self.Da is not None:
+            V = sum(
+                S@P@(f*g - F)@Q@S - S@Q@(f*g + F)@P@S
+                for f, (P, Q) in zip(factors, projectors)
+                # for P, Q in ((Db, Da-Db), (Da-Db, S.I-Da))
+            )
+            F += V
+        return F
+
+    def converged(self):
+        if self.it == 0:
+            return False
+        else:
+            return self.gn() < self.threshold
 
 
 def swap(xy):

@@ -158,7 +158,7 @@ class TestTS01(TestQC):
 @pytest.mark.parametrize('code', codes_settings, indirect=True, ids=ids)
 class TestSCF(TestQC):
     def test_roothan_rohf(self, code):
-        final_energy, final_norm = code.run_roothan_iterations(
+        code.set_roothan_iterator(
             CASE,
             electrons=19,
             max_iterations=20,
@@ -166,5 +166,6 @@ class TestSCF(TestQC):
             tmpdir=code.get_workdir(),
             ms=1/2,
         )
+        final_energy, final_norm = code.run_roothan_iterations()
         assert final_energy == pytest.approx(-455.591114652976)
         assert final_norm < 1e-5

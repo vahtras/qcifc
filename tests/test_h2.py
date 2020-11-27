@@ -473,7 +473,47 @@ class TestH2(TestQC):
         )
 
     def test_roothan_rhf(self, code):
-        final_energy, final_norm = code.run_roothan_iterations(
+        code.set_roothan_iterator(
+            'h2',
+            electrons=2,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+        )
+        final_energy, final_norm = code.run_roothan_iterations()
+        assert final_norm < 1e-5
+        assert final_energy == pytest.approx(-1.116759309042810)
+
+    def test_roothan_rohf(self, code):
+        code.set_roothan_iterator(
+            'h2',
+            electrons=1,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        final_energy, final_norm = code.run_roothan_iterations()
+        assert final_norm < 1e-5
+        assert final_energy == pytest.approx(-0.5382054446)
+
+    @pytest.mark.skip()
+    def test_roothan_uhf(self, code):
+        code.set_uroothan_iterator(
+            'h2',
+            electrons=1,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        final_energy, final_norm = code.run_uroothan_iterations()
+        assert final_norm < 1e-5
+        assert final_energy == pytest.approx(-0.5382054446)
+
+    @pytest.mark.skip()
+    def test_diis_rhf(self, code):
+        final_energy, final_norm = code.run_diis_iterations(
             'h2',
             electrons=2,
             max_iterations=10,
@@ -483,8 +523,9 @@ class TestH2(TestQC):
         assert final_norm < 1e-5
         assert final_energy == pytest.approx(-1.116759309042810)
 
-    def test_roothan_rohf(self, code):
-        final_energy, final_norm = code.run_roothan_iterations(
+    @pytest.mark.skip()
+    def test_diis_rohf(self, code):
+        final_energy, final_norm = code.run_diis_iterations(
             'h2',
             electrons=1,
             max_iterations=10,
@@ -495,8 +536,9 @@ class TestH2(TestQC):
         assert final_norm < 1e-5
         assert final_energy == pytest.approx(-0.5382054446)
 
-    def test_roothan_uhf(self, code):
-        final_energy, final_norm = code.run_uroothan_iterations(
+    @pytest.mark.skip()
+    def test_diis_uhf(self, code):
+        final_energy, final_norm = code.run_udiis_iterations(
             'h2',
             electrons=1,
             max_iterations=10,

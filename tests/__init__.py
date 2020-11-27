@@ -6,14 +6,21 @@ import itertools
 import pytest
 
 sys.path.insert(0, os.path.abspath('..'))
-from qcifc.dalton_factory import DaltonFactoryDummy, DaltonFactory
-from qcifc.vlx import VeloxChem, VeloxChemDummy
+from qcifc.dalton_factory import (
+    # DaltonFactoryDummy,
+    DaltonFactory,
+)
+
+from qcifc.vlx import (
+    VeloxChem,
+    # VeloxChemDummy,
+)
 
 codes = {
-    #'dummy': DaltonFactoryDummy,
+    # 'dummy': DaltonFactoryDummy,
     'dalton': DaltonFactory,
-    #'vlx': VeloxChem,
-    #'vlxdummy': VeloxChemDummy,
+    # 'vlx': VeloxChem,
+    # 'vlxdummy': VeloxChemDummy,
 }
 
 
