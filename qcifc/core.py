@@ -2,9 +2,9 @@
 import abc
 from fractions import Fraction
 import math
-import os
 
 import numpy as np
+import scipy
 
 from . import normalizer
 
@@ -140,11 +140,14 @@ class QuantumChemistry(abc.ABC):
         if b is not None:
             new_trials = new_trials - b@b.T@new_trials
         if trials and renormalize:
-            #truncated = truncate(new_trials)
+            # truncated = truncate(new_trials)
             new_trials = self.normalizer.normalize(new_trials)
         return new_trials
 
-    def setup_trials(self, vectors, excitations=[], converged={}, td=None, tdx=None, b=None, renormalize=True):
+    def setup_trials(
+        self, vectors, excitations=[], converged={}, td=None, tdx=None, b=None,
+        renormalize=True
+    ):
         """
         Set up initial trial vectors from a set of intial guesses
         """
@@ -180,7 +183,9 @@ class QuantumChemistry(abc.ABC):
         return new_trials
 
     def pp_solve(self, roots, threshold=1e-5):
-        _, excitations =  self.lr_solve(ops=(), freqs=(), roots=roots, threshold=threshold)
+        _, excitations = self.lr_solve(
+            ops=(), freqs=(), roots=roots, threshold=threshold
+        )
         return excitations
 
     def lr_solve(
@@ -218,7 +223,6 @@ class QuantumChemistry(abc.ABC):
         for i in range(maxit):
             # next solution
             self.update_observers([], info=f'{i+1}')
-            output = ""
             for op, freq in solutions:
                 v = V1[op]
                 reduced_solution = np.linalg.solve(b.T@(e2b-freq*s2b), b.T@v)
@@ -234,7 +238,10 @@ class QuantumChemistry(abc.ABC):
 
                 relative_residual_norm[(op, freq)] = rn / nn
                 converged[(op, freq)] = rn / nn < threshold
-                self.update_observers([nv, rn, nn], converged=converged[(op, freq)])
+                self.update_observers(
+                    [nv, rn, nn],
+                    converged=converged[(op, freq)]
+                )
 
             if roots > 0:
                 reduced_ev = self.direct_ev_solver2(roots, b.T@e2b, b.T@s2b)
@@ -257,7 +264,9 @@ class QuantumChemistry(abc.ABC):
                 break
 
             tdx = {w: od-w*sd for w, _ in excitations}
-            new_trials = self.setup_trials(residuals, exresiduals, converged, td=td, tdx=tdx, b=b)
+            new_trials = self.setup_trials(
+                residuals, exresiduals, converged, td=td, tdx=tdx, b=b
+            )
             b = bappend(b, new_trials)
             e2b = bappend(e2b, self.e2n(new_trials))
             s2b = bappend(s2b, self.s2n(new_trials))
@@ -334,7 +343,10 @@ class QuantumChemistry(abc.ABC):
     def transition_moments(self, ops, roots, **kwargs):
         solutions = list(self.pp_solve(roots, **kwargs))
         V1 = {op: V for op, V in zip(ops, self.get_rhs(*ops))}
-        tms = {op: np.array([np.dot(V1[op], s[1]) for s in solutions]) for op in ops}
+        tms = {
+            op: np.array([np.dot(V1[op], s[1]) for s in solutions])
+            for op in ops
+        }
         tms['w'] = np.array([s[0] for s in solutions])
         return tms
 
@@ -361,10 +373,11 @@ class SCFIterator():
         self.gradient_norms = []
 
 
-class RoothanIterator(SCFIterator):
+class RoothanIterator(SCFIterator, abc.ABC):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, code, **kwargs):
         super().__init__()
+        self.code = code
         self.it = 0
         self.max_iterations = kwargs.get('max_iterations', 20)
         self.threshold = kwargs.get('threshold', 1e-5)
@@ -384,6 +397,25 @@ class RoothanIterator(SCFIterator):
         self.ga = None
         self.gb = None
         self.rohf_factors = kwargs.get('factors', (1.0, 1.0))
+        self.kwargs = kwargs
+
+    def __repr__(self):
+        kwargs = ", ".join(f'{k}={v}' for k, v in self.kwargs.items())
+        return f'{self.__class__.__name__}({kwargs})'
+
+    def __iter__(self):
+        """
+        Initial setup for SCF iterations
+        """
+        self.na = (self.nel + 2*self.ms)//2
+        self.nb = (self.nel - 2*self.ms)//2
+
+        self.Z = self.code.get_nuclear_repulsion()
+        self.h1 = self.code.get_one_el_hamiltonian()
+        self.S = self.code.get_overlap()
+        if self.C is None:
+            self.generate_start_guess_mo()
+        return self
 
     def __next__(self):
         """
@@ -402,10 +434,35 @@ class RoothanIterator(SCFIterator):
         else:
             raise StopIteration
 
+    def set_densities(self):
+        Ca, Cb = self.C
+        self.Da = Ca[:, :self.na] @ Ca[:, :self.na].T
+        self.Db = Ca[:, :self.nb] @ Cb[:, :self.nb].T
+
+    def set_focks(self):
+        (self.Fa, self.Fb), = self.code.get_two_el_fock((self.Da, self.Db))
+
     def energy(self):
-        e1 = self.h1 & (self.Da + self.Db)
-        e2 = 0.5*((self.Da & self.Fa) + (self.Db & self.Fb))
+        e1 = np.einsum('ij,ij', self.h1, (self.Da + self.Db))
+        e2 = 0.5*(
+            np.einsum('ij,ij', self.Da, self.Fa) +
+            np.einsum('ij,ij', self.Db, self.Fb)
+        )
         return e1 + e2 + self.Z
+
+    def generate_start_guess_mo(self, method='h1diag'):
+
+        if method == 'h1diag':
+            # self.Ca = dens.cmo(self.h1, self.S)
+            self.Ca = self.h1diag()
+            self.Cb = self.Ca
+            self.C = (self.Ca, self.Cb)
+        else:
+            raise Exception(f'Starting guess method "{method}" unknown')
+
+    def h1diag(self):
+        l, V = scipy.linalg.eigh(self.h1, self.S)
+        return V
 
     def gn(self):
         Fa = self.h1 + self.Fa
@@ -413,18 +470,33 @@ class RoothanIterator(SCFIterator):
         Da = self.Da
         Db = self.Db
         S = self.S
+        SI = np.linalg.inv(S)
 
         self.ga = ga = S@Da@Fa - Fa@Da@S
         self.gb = gb = S@Db@Fb - Fb@Db@S
 
-        gn = 2*((ga + gb) & (S.I@(ga + gb)@S.I))
+        gn = 2*np.einsum('ij,ij', ga + gb, SI@(ga + gb)@SI)
 
         return math.sqrt(gn)
+
+    def update_mo(self):
+
+        F = self.Feff()
+        l, V = scipy.linalg.eigh(F, self.S)
+        Ca = V
+        Cb = Ca
+        self.C = Ca, Cb
+
+    def c(self):
+        rhs = np.zeros(len(self.evecs) + 1)
+        rhs[-1] = 1.0
+        return np.linalg.solve(self.B(), rhs)[:-1]
 
     def Feff(self):
 
         F = self.h1 + (self.Fa + self.Fb)/2
         S = self.S
+        SI = np.linalg.inv(S)
 
         Da = self.Da
         Db = self.Db
@@ -437,7 +509,7 @@ class RoothanIterator(SCFIterator):
 
         inactive = Db
         active = Da - Db
-        virtual = S.I - Da
+        virtual = SI - Da
 
         # factor_pq = (1.0, 1.0)
         projectors = [(inactive, active), (active, virtual)]

@@ -3,11 +3,12 @@ import pathlib
 
 from mpi4py import MPI
 import numpy as np
+import scipy
 import veloxchem as vlx
 from veloxchem.veloxchemlib import szblock
 from veloxchem.veloxchemlib import denmat, fockmat
 
-from .core import QuantumChemistry
+from .core import QuantumChemistry, RoothanIterator
 
 
 class VeloxChem(QuantumChemistry):
@@ -124,7 +125,14 @@ class VeloxChem(QuantumChemistry):
         inp = str(pathlib.Path(self.get_workdir())/f'{mol}.inp')
         out = str(pathlib.Path(self.get_workdir())/f'{mol}.out')
         self.task = vlx.MpiTask((inp, out), self.comm)
-        self.scf_driver = vlx.ScfRestrictedDriver(self.comm, self.task.ostream)
+        if self.task.molecule.number_of_electrons() % 2 == 0:
+            self.scf_driver = vlx.ScfRestrictedDriver(
+                self.comm, self.task.ostream
+            )
+        else:
+            self.scf_driver = vlx.ScfUnrestrictedDriver(
+                self.comm, self.task.ostream
+            )
         self.scf_driver.conv_thresh = conv_thresh
         self.scf_driver.compute(
             self.task.molecule,
@@ -336,6 +344,9 @@ class VeloxChem(QuantumChemistry):
 
         return gv
 
+    def set_roothan_iterator(self, *args, **kwargs):
+        self.roothan = VeloxChemRoothanIterator(self, **kwargs)
+
 
 class VeloxChemDummy(VeloxChem):
 
@@ -344,3 +355,8 @@ class VeloxChemDummy(VeloxChem):
 
     def pp_solve(self, roots, **kwargs):
         return self.direct_ev_solver2(roots)
+
+
+class VeloxChemRoothanIterator(RoothanIterator):
+
+    ...

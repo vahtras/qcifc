@@ -167,8 +167,8 @@ class DaltonFactory(QuantumChemistry):
         subprocess.call(['tar', 'xvfz', f'hf_{mol}.tar.gz'])
         os.chdir(cwd)
 
-    def set_roothan_iterator(self, mol, **kwargs):
-        self.roothan = DaltonRoothanIterator(**kwargs)
+    def set_roothan_iterator(self, *args, **kwargs):
+        self.roothan = DaltonRoothanIterator(self, **kwargs)
 
     def set_diis_iterator(self, mol, **kwargs):
         self.diis = DiisIterator(**kwargs)
@@ -212,40 +212,6 @@ class DaltonFactoryDummy(DaltonFactory):
 
 
 class DaltonRoothanIterator(RoothanIterator):
-
-    def __iter__(self):
-        """
-        Initial setup for SCF iterations
-        """
-        self.na = (self.nel + 2*self.ms)//2
-        self.nb = (self.nel - 2*self.ms)//2
-
-        AOONEINT = os.path.join(self.tmpdir, 'AOONEINT')
-        self.Z = one.readhead(AOONEINT)['potnuc']
-        self.h1 = one.read(
-            label='ONEHAMIL', filename=AOONEINT
-        ).unpack().unblock()
-        self.S = one.read(
-            label='OVERLAP', filename=AOONEINT
-        ).unpack().unblock()
-        if self.C is None:
-            self.Ca = dens.cmo(self.h1, self.S)
-            self.Cb = self.Ca
-            self.C = (self.Ca, self.Cb)
-
-        return self
-
-    def set_densities(self):
-        Ca, Cb = self.C
-        self.Da = dens.C1D(Ca, self.na)
-        self.Db = dens.C1D(Cb, self.nb)
-
-    def set_focks(self):
-        AOTWOINT = os.path.join(self.tmpdir, 'AOTWOINT')
-        (self.Fa, self.Fb), = two.core.fockab(
-            (self.Da, self.Db),
-            filename=AOTWOINT
-        )
 
     def update_mo(self):
 
@@ -315,9 +281,3 @@ class DiisIterator(RoothanIterator):
             for c, e in zip(self.c(), self.vecs)
         )
 
-    def update_mo(self):
-
-        F = self.Fopt()
-        Ca = dens.cmo(F, self.S)
-        Cb = Ca
-        self.C = Ca, Cb

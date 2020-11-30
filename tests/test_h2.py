@@ -474,7 +474,7 @@ class TestH2(TestQC):
 
     def test_roothan_rhf(self, code):
         code.set_roothan_iterator(
-            'h2',
+            code,
             electrons=2,
             max_iterations=10,
             threshold=1e-5,
@@ -483,6 +483,17 @@ class TestH2(TestQC):
         final_energy, final_norm = code.run_roothan_iterations()
         assert final_norm < 1e-5
         assert final_energy == pytest.approx(-1.116759309042810)
+
+    def test_first_roothan_rhf(self, code):
+        code.set_roothan_iterator(
+            code,
+            electrons=2,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+        )
+        initial_energy, _ = next(iter(code.roothan))
+        assert initial_energy == pytest.approx(-1.116759309042810)
 
     def test_roothan_rohf(self, code):
         code.set_roothan_iterator(
@@ -496,6 +507,18 @@ class TestH2(TestQC):
         final_energy, final_norm = code.run_roothan_iterations()
         assert final_norm < 1e-5
         assert final_energy == pytest.approx(-0.5382054446)
+
+    def test_first_roothan_rohf(self, code):
+        code.set_roothan_iterator(
+            'h2',
+            electrons=1,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        initial_energy, initial_norm = next(iter(code.roothan))
+        assert initial_energy == pytest.approx(-0.5382054446)
 
     @pytest.mark.skip()
     def test_roothan_uhf(self, code):

@@ -1,11 +1,8 @@
-import os
-import sys
 import pathlib
 import itertools
 
 import pytest
 
-sys.path.insert(0, os.path.abspath('..'))
 from qcifc.dalton_factory import (
     # DaltonFactoryDummy,
     DaltonFactory,
@@ -19,7 +16,7 @@ from qcifc.vlx import (
 codes = {
     # 'dummy': DaltonFactoryDummy,
     'dalton': DaltonFactory,
-    # 'vlx': VeloxChem,
+    'vlx': VeloxChem,
     # 'vlxdummy': VeloxChemDummy,
 }
 
