@@ -3,12 +3,11 @@ import pathlib
 
 from mpi4py import MPI
 import numpy as np
-import scipy
 import veloxchem as vlx
 from veloxchem.veloxchemlib import szblock
 from veloxchem.veloxchemlib import denmat, fockmat
 
-from .core import QuantumChemistry, RoothanIterator
+from .core import QuantumChemistry, RoothanIterator, DiisIterator
 
 
 class VeloxChem(QuantumChemistry):
@@ -32,6 +31,9 @@ class VeloxChem(QuantumChemistry):
 
     def get_workdir(self):
         return self._tmpdir
+
+    def get_number_of_electrons(self):
+        return self.task.molecule.number_of_electrons()
 
     def set_workdir(self, tmpdir):
         self._tmpdir = tmpdir
@@ -347,6 +349,10 @@ class VeloxChem(QuantumChemistry):
     def set_roothan_iterator(self, *args, **kwargs):
         self.roothan = VeloxChemRoothanIterator(self, **kwargs)
 
+    def set_scf_iterator(self, algorithm, *args, **kwargs):
+        iterator = iterators[algorithm]
+        self.scf = iterator(self, **kwargs)
+
 
 class VeloxChemDummy(VeloxChem):
 
@@ -358,5 +364,14 @@ class VeloxChemDummy(VeloxChem):
 
 
 class VeloxChemRoothanIterator(RoothanIterator):
+    pass
 
-    ...
+
+class VeloxChemDiisIterator(DiisIterator):
+    pass
+
+
+iterators = {
+    'roothan': VeloxChemRoothanIterator,
+    'diis': VeloxChemDiisIterator,
+}

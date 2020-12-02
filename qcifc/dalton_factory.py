@@ -1,4 +1,3 @@
-from collections import deque
 import os
 import subprocess
 
@@ -9,7 +8,7 @@ from dalmisc import oli, rohf
 from dalmisc.scf_iter import URoothanIterator
 import two.core
 
-from .core import QuantumChemistry, RoothanIterator
+from .core import QuantumChemistry, RoothanIterator, DiisIterator
 
 
 class DaltonFactory(QuantumChemistry):
@@ -77,6 +76,11 @@ class DaltonFactory(QuantumChemistry):
             f2py=False
             )
         return fab
+
+    def get_number_of_electrons(self):
+        ifc = self._sirifc()
+        electrons = 2*ifc.nisht + ifc.nasht
+        return electrons
 
     def _sirifc(self, filename=None):
         if filename is None:
@@ -167,6 +171,10 @@ class DaltonFactory(QuantumChemistry):
         subprocess.call(['tar', 'xvfz', f'hf_{mol}.tar.gz'])
         os.chdir(cwd)
 
+    def set_scf_iterator(self, algorithm, *args, **kwargs):
+        iterator = iterators[algorithm]
+        self.scf = iterator(self, **kwargs)
+
     def set_roothan_iterator(self, *args, **kwargs):
         self.roothan = DaltonRoothanIterator(self, **kwargs)
 
@@ -189,6 +197,8 @@ class DaltonFactory(QuantumChemistry):
         subprocess.call(
             'rm *.[0-9] DALTON.* *AO* *SIR* *RSP* molden.inp', shell=True
         )
+
+
 
 
 class DaltonFactoryDummy(DaltonFactory):
@@ -228,56 +238,11 @@ class DaltonRoothanIterator(RoothanIterator):
         return self.S@rohf.Feff(Da, Db, Fa, Fb)
 
 
-class DiisIterator(RoothanIterator):
+class DaltonDiisIterator(DiisIterator):
+    pass
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.evecs = deque()
-        self.vecs = deque()
-        self.max_vecs = kwargs.get('max_vecs', 2)
 
-    def __next__(self):
-        """
-        Updates for in a SCF iteration
-        """
-        if not self.converged() and self.it < self.max_iterations:
-            self.it += 1
-            self.set_densities()
-            self.set_focks()
-            e = self.energy()
-            gn = self.gn()
-
-            self.vecs.append(self.Feff())
-            self.evecs.append(self.ga + self.gb)
-            if len(self.vecs) > self.max_vecs:
-                self.vecs.popleft()
-                self.evecs.popleft()
-
-            self.update_mo()
-            self.energies.append(e)
-            self.gradient_norms.append(gn)
-            return (e, gn)
-        else:
-            raise StopIteration
-
-    def B(self):
-        dim = len(self.evecs) + 1
-        Bmat = np.ones((dim, dim))
-        for i, vi in enumerate(self.evecs):
-            for j, vj in enumerate(self.evecs):
-                Bmat[i, j] = 4*(vi & (self.S.I@vj@self.S.I))
-
-        Bmat[-1, -1] = 0
-        return Bmat
-
-    def c(self):
-        rhs = np.zeros(len(self.evecs) + 1)
-        rhs[-1] = 1.0
-        return np.linalg.solve(self.B(), rhs)[:-1]
-
-    def Fopt(self):
-        return sum(
-            c*e
-            for c, e in zip(self.c(), self.vecs)
-        )
-
+iterators = {
+    'roothan': DaltonRoothanIterator,
+    'diis': DaltonDiisIterator,
+}

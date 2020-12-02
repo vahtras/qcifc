@@ -1,5 +1,6 @@
 """Abstract interface to QM codes"""
 import abc
+from collections import deque
 from fractions import Fraction
 import math
 
@@ -101,7 +102,7 @@ class QuantumChemistry(abc.ABC):
 
     def initial_guess(
             self, ops="xyz", freqs=(0,), roots=0, hessian_diagonal_shift=0.0001
-        ):
+    ):
         od = self.get_orbital_diagonal(shift=hessian_diagonal_shift)
         sd = self.get_overlap_diagonal()
         dim = od.shape[0]
@@ -116,7 +117,9 @@ class QuantumChemistry(abc.ABC):
                     ig[(op, w)] = grad/td
         return ig
 
-    def init_trials(self, vectors, excitations=[], td=None, b=None, renormalize=True):
+    def init_trials(
+        self, vectors, excitations=[], td=None, b=None, renormalize=True
+    ):
         """
         Set up initial trial vectors from a set of intial guesses
         """
@@ -413,6 +416,7 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.Z = self.code.get_nuclear_repulsion()
         self.h1 = self.code.get_one_el_hamiltonian()
         self.S = self.code.get_overlap()
+        self.SI = np.linalg.inv(self.S)
         if self.C is None:
             self.generate_start_guess_mo()
         return self
@@ -529,6 +533,68 @@ class RoothanIterator(SCFIterator, abc.ABC):
             return False
         else:
             return self.gn() < self.threshold
+
+
+class DiisIterator(RoothanIterator):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.evecs = deque()
+        self.vecs = deque()
+        self.max_vecs = kwargs.get('max_vecs', 2)
+
+    def __next__(self):
+        """
+        Updates for in a SCF iteration
+        """
+        if not self.converged() and self.it < self.max_iterations:
+            self.it += 1
+            self.set_densities()
+            self.set_focks()
+            e = self.energy()
+            gn = self.gn()
+
+            self.vecs.append(self.Feff())
+            self.evecs.append(self.ga + self.gb)
+            if len(self.vecs) > self.max_vecs:
+                self.vecs.popleft()
+                self.evecs.popleft()
+
+            self.update_mo()
+            self.energies.append(e)
+            self.gradient_norms.append(gn)
+            return (e, gn)
+        else:
+            raise StopIteration
+
+    def B(self):
+        dim = len(self.evecs) + 1
+        Bmat = np.ones((dim, dim))
+        for i, vi in enumerate(self.evecs):
+            for j, vj in enumerate(self.evecs):
+                Bmat[i, j] = 4*np.einsum('ij,ij', vi, (self.SI@vj@self.SI))
+
+        Bmat[-1, -1] = 0
+        return Bmat
+
+    def c(self):
+        rhs = np.zeros(len(self.evecs) + 1)
+        rhs[-1] = 1.0
+        return np.linalg.solve(self.B(), rhs)[:-1]
+
+    def Fopt(self):
+        return sum(
+            c*e
+            for c, e in zip(self.c(), self.vecs)
+        )
+
+    def update_mo(self):
+
+        F = self.Fopt()
+        l, V = scipy.linalg.eigh(F, self.S)
+        Ca = V
+        Cb = Ca
+        self.C = Ca, Cb
 
 
 def swap(xy):

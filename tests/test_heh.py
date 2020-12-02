@@ -52,6 +52,9 @@ class TestHeH(TestQC):
             atol=1e-5
         )
 
+    def test_get_number_of_electrons(self, code):
+        assert code.get_number_of_electrons() == 3
+
     def test_get_s2_diagonal(self, code):
         """Get diagonal overlap hessian"""
         self.skip_open_shell(code)
@@ -263,6 +266,32 @@ class TestHeH(TestQC):
         assert final_energy == pytest.approx(-3.269722925573)
         assert final_norm < 1e-5
 
+    def test_scf_roothan_final(self, code):
+        code.set_scf_iterator(
+            'roothan',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        final_energy, final_norm = list(code.scf)[-1]
+        assert final_energy == pytest.approx(-3.269722925573)
+        assert final_norm < 1e-5
+
+    def test_scf_diis_final(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        final_energy, final_norm = list(code.scf)[-1]
+        assert final_energy == pytest.approx(-3.269722925573)
+        assert final_norm < 1e-5
+
     def test_roothan_rohf_initial_energy(self, code):
         code.set_roothan_iterator(
             CASE,
@@ -273,6 +302,30 @@ class TestHeH(TestQC):
             ms=1/2,
         )
         initial_energy, _ = next(iter(code.roothan))
+        assert initial_energy == pytest.approx(-3.26919092387)
+
+    def test_roothan_scf_initial_energy(self, code):
+        code.set_scf_iterator(
+            'roothan',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        initial_energy, _ = next(iter(code.scf))
+        assert initial_energy == pytest.approx(-3.26919092387)
+
+    def test_diis_scf_initial_energy(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        initial_energy, _ = next(iter(code.scf))
         assert initial_energy == pytest.approx(-3.26919092387)
 
     def test_roothan_rohf_initial_mo(self, code):
