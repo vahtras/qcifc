@@ -328,6 +328,55 @@ class TestHeH(TestQC):
         initial_energy, _ = next(iter(code.scf))
         assert initial_energy == pytest.approx(-3.26919092387)
 
+    def test_diis_scf_restart_energy(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        list(iter(code.scf))
+        C = code.scf.C
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+            C0=C,
+        )
+        restart_energy, _ = next(iter(code.scf))
+        assert restart_energy == pytest.approx(-3.269722925573)
+
+    def test_diis_scf_restart_energy2(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+
+        list(iter(code.scf))
+        C = code.scf.C[0].copy()
+
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+            C0=lambda: C,
+            C0_args=(),
+        )
+        restart_energy, _ = next(iter(code.scf))
+        assert restart_energy == pytest.approx(-3.269722925573)
+
     def test_roothan_rohf_initial_mo(self, code):
         code.set_roothan_iterator(
             CASE,

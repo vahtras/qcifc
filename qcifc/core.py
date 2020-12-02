@@ -384,9 +384,18 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.it = 0
         self.max_iterations = kwargs.get('max_iterations', 20)
         self.threshold = kwargs.get('threshold', 1e-5)
-        self.C = kwargs.get('C0', None)
-        if isinstance(self.C, np.ndarray):
-            self.C = (self.C, self.C)
+        C0 = kwargs.get('C0', None)
+        if isinstance(C0, tuple):
+            self.C = C0
+        elif isinstance(C0, np.ndarray):
+            self.C = (C0, C0)
+        elif callable(C0):
+            args = kwargs.get('C0_args', ())
+            C0 = C0(*args)
+            self.C = (C0, C0)
+        else:
+            self.C = None
+
         self.tmpdir = kwargs.get('tmpdir', '/tmp')
         self.nel = kwargs.get('electrons', 0)
         self.ms = Fraction(kwargs.get('ms', 0))
