@@ -375,6 +375,15 @@ class SCFIterator():
         self.energies = []
         self.gradient_norms = []
 
+    def __add__(self, other):
+        for e, gn in self:
+            yield e, gn
+
+        other.C = self.C
+
+        for e, gn in other:
+            yield e, gn
+
 
 class RoothanIterator(SCFIterator, abc.ABC):
 
@@ -623,14 +632,6 @@ class DiisIterator(RoothanIterator):
             c*e
             for c, e in zip(self.c(), self.vecs)
         )
-
-    def update_mo(self):
-
-        F = self.Fopt()
-        l, V = scipy.linalg.eigh(F, self.S)
-        Ca = V
-        Cb = Ca
-        self.C = Ca, Cb
 
 
 def swap(xy):

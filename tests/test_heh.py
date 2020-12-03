@@ -351,6 +351,59 @@ class TestHeH(TestQC):
         restart_energy, _ = next(iter(code.scf))
         assert restart_energy == pytest.approx(-3.269722925573)
 
+    def test_roothan_scf_restart_by_add(self, code):
+        code.set_scf_iterator(
+            'roothan',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-2,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        scf1 = code.scf
+
+        code.set_scf_iterator(
+            'roothan',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        scf2 = code.scf
+
+        code.scf = scf1 + scf2
+        list(iter(code.scf))
+
+        assert scf1.energies[-1] == scf2.energies[0]
+
+    def test_diis_scf_restart_by_add(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-2,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        scf1 = code.scf
+
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        scf2 = code.scf
+
+        code.scf = scf1 + scf2
+        list(iter(code.scf))
+
+        assert scf1.energies[-1] == scf2.energies[0]
+
+
     def test_diis_scf_restart_energy2(self, code):
         code.set_scf_iterator(
             'diis',

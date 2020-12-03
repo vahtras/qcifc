@@ -199,8 +199,6 @@ class DaltonFactory(QuantumChemistry):
         )
 
 
-
-
 class DaltonFactoryDummy(DaltonFactory):
     """Concrete dummy 'factory', Dalton"""
 
