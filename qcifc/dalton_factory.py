@@ -223,7 +223,7 @@ class DaltonFactoryDummy(DaltonFactory):
 
 class DaltonRoothanIterator(RoothanIterator):
 
-    def update_mo(self):
+    def _update_mo(self):
 
         F = self.Feff()
         Ca = dens.cmo(F, self.S)

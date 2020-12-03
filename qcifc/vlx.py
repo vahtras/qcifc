@@ -146,6 +146,10 @@ class VeloxChem(QuantumChemistry):
         mos = self.scf_driver.mol_orbs.alpha_to_numpy()
         return mos
 
+    def get_mob(self):
+        mos = self.scf_driver.mol_orbs.beta_to_numpy()
+        return mos
+
     def __set_densities(self, da, db):
         from veloxchem import denmat
         self._da = vlx.AODensityMatrix(

@@ -402,14 +402,38 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.Z = None
         self.h1 = None
         self.S = None
-        self.Fa = None
-        self.Fb = None
-        self.Da = None
-        self.Db = None
+        self._Fa = None
+        self._Fb = None
+        self._Da = None
+        self._Db = None
         self.ga = None
         self.gb = None
         self.rohf_factors = kwargs.get('factors', (1.0, 1.0))
         self.kwargs = kwargs
+
+    @property
+    def Da(self):
+        if self._Da is None:
+            self.set_densities()
+        return self._Da
+
+    @property
+    def Db(self):
+        if self._Db is None:
+            self.set_densities()
+        return self._Db
+
+    @property
+    def Fa(self):
+        if self._Fa is None:
+            self.set_focks()
+        return self._Fa
+
+    @property
+    def Fb(self):
+        if self._Fb is None:
+            self.set_focks()
+        return self._Fb
 
     def __repr__(self):
         kwargs = ", ".join(f'{k}={v}' for k, v in self.kwargs.items())
@@ -440,20 +464,20 @@ class RoothanIterator(SCFIterator, abc.ABC):
             self.set_focks()
             e = self.energy()
             gn = self.gn()
-            self.update_mo()
             self.energies.append(e)
             self.gradient_norms.append(gn)
+            self.update_mo()
             return (e, gn)
         else:
             raise StopIteration
 
     def set_densities(self):
         Ca, Cb = self.C
-        self.Da = Ca[:, :self.na] @ Ca[:, :self.na].T
-        self.Db = Ca[:, :self.nb] @ Cb[:, :self.nb].T
+        self._Da = Ca[:, :self.na] @ Ca[:, :self.na].T
+        self._Db = Ca[:, :self.nb] @ Cb[:, :self.nb].T
 
     def set_focks(self):
-        (self.Fa, self.Fb), = self.code.get_two_el_fock((self.Da, self.Db))
+        (self._Fa, self._Fb), = self.code.get_two_el_fock((self.Da, self.Db))
 
     def energy(self):
         e1 = np.einsum('ij,ij', self.h1, (self.Da + self.Db))
@@ -493,6 +517,9 @@ class RoothanIterator(SCFIterator, abc.ABC):
         return math.sqrt(gn)
 
     def update_mo(self):
+
+        if self.converged():
+            return
 
         F = self.Feff()
         l, V = scipy.linalg.eigh(F, self.S)
