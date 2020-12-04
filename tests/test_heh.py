@@ -403,7 +403,6 @@ class TestHeH(TestQC):
 
         assert scf1.energies[-1] == scf2.energies[0]
 
-
     def test_diis_scf_restart_energy2(self, code):
         code.set_scf_iterator(
             'diis',

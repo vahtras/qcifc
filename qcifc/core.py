@@ -376,6 +376,7 @@ class SCFIterator():
         self.gradient_norms = []
 
     def __add__(self, other):
+
         for e, gn in self:
             yield e, gn
 
@@ -611,6 +612,17 @@ class DiisIterator(RoothanIterator):
             return (e, gn)
         else:
             raise StopIteration
+
+    def update_mo(self):
+
+        if self.converged():
+            return
+
+        F = self.Fopt()
+        l, V = scipy.linalg.eigh(F, self.S)
+        Ca = V
+        Cb = Ca
+        self.C = Ca, Cb
 
     def B(self):
         dim = len(self.evecs) + 1
