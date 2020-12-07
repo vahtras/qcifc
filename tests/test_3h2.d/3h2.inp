@@ -1,0 +1,16 @@
+@jobs
+task: hf
+@end
+
+@method settings
+basis: STO-3G
+@end
+
+@molecule
+charge: 0
+multiplicity: 3
+units: angstrom
+xyz:  
+H 0.0  0.0  0.0
+H 0.0  0.0  0.74
+@end 
