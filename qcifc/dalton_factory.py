@@ -188,7 +188,7 @@ class DaltonFactory(QuantumChemistry):
         return e, gn
 
     def run_diis_iterations(self, mol, **kwargs):
-        diis = DiisIterator(**kwargs)
+        diis = DiisIterator(self, **kwargs)
         for i, (e, gn) in enumerate(diis):
             print(f'{i:2d}: {e:14.10f} {gn:.3e}')
         return e, gn

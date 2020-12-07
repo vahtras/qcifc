@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
-import numpy.testing as npt
-
+import numpy.testing as npt 
 from . import TestQC, get_codes_settings, get_codes_ids
 
 CASE = 'heh'
@@ -458,3 +457,34 @@ class TestHeH(TestQC):
         )
         assert final_energy == pytest.approx(-3.2697229256)
         assert final_norm < 1e-5
+
+    def test_occupancies(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+        )
+        it = iter(code.scf)
+        assert it.na == 2
+        assert it.nb == 1
+        npt.assert_equal(it.occa, [0, 1])
+        npt.assert_equal(it.occb, [0])
+
+    def test_core_hole(self, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+            open_shells=[0]
+        )
+        it = iter(code.scf)
+        assert it.na == 2
+        assert it.nb == 1
+        npt.assert_equal(it.occa, [0, 1])
+        npt.assert_equal(it.occb, [1])

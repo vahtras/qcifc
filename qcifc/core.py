@@ -420,6 +420,9 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.gb = None
         self.rohf_factors = kwargs.get('factors', (1.0, 1.0))
         self.kwargs = kwargs
+        self.occa = None
+        self.occb = None
+        self.open_shells = kwargs.get('open_shells', [])
 
     @property
     def Da(self):
@@ -460,8 +463,17 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.h1 = self.code.get_one_el_hamiltonian()
         self.S = self.code.get_overlap()
         self.SI = np.linalg.inv(self.S)
+
         if self.C is None:
             self.generate_start_guess_mo()
+
+        self.occa = list(range(self.na))
+        self.occb = list(range(self.nb))
+
+        if self.open_shells:
+            del(self.occb[self.occb.index(self.open_shells[0])])
+            self.occb.append(self.nb)
+
         return self
 
     def __next__(self):
@@ -483,8 +495,8 @@ class RoothanIterator(SCFIterator, abc.ABC):
 
     def set_densities(self):
         Ca, Cb = self.C
-        self._Da = Ca[:, :self.na] @ Ca[:, :self.na].T
-        self._Db = Cb[:, :self.nb] @ Cb[:, :self.nb].T
+        self._Da = Ca[:, self.occa] @ Ca[:, self.occa].T
+        self._Db = Cb[:, self.occb] @ Cb[:, self.occb].T
 
     def set_focks(self):
         (self._Fa, self._Fb), = self.code.get_two_el_fock((self.Da, self.Db))

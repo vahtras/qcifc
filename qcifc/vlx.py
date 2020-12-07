@@ -127,7 +127,8 @@ class VeloxChem(QuantumChemistry):
         inp = str(pathlib.Path(self.get_workdir())/f'{mol}.inp')
         out = str(pathlib.Path(self.get_workdir())/f'{mol}.out')
         self.task = vlx.MpiTask((inp, out), self.comm)
-        if self.task.molecule.number_of_electrons() % 2 == 0:
+
+        if self.task.molecule.get_multiplicity() == 1:
             self.scf_driver = vlx.ScfRestrictedDriver(
                 self.comm, self.task.ostream
             )
@@ -356,6 +357,12 @@ class VeloxChem(QuantumChemistry):
     def set_scf_iterator(self, algorithm, *args, **kwargs):
         iterator = iterators[algorithm]
         self.scf = iterator(self, **kwargs)
+
+    def run_diis_iterations(self, mol, **kwargs):
+        diis = DiisIterator(self, **kwargs)
+        for i, (e, gn) in enumerate(diis):
+            print(f'{i:2d}: {e:14.10f} {gn:.3e}')
+        return e, gn
 
 
 class VeloxChemDummy(VeloxChem):
