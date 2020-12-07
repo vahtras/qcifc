@@ -484,7 +484,7 @@ class RoothanIterator(SCFIterator, abc.ABC):
     def set_densities(self):
         Ca, Cb = self.C
         self._Da = Ca[:, :self.na] @ Ca[:, :self.na].T
-        self._Db = Ca[:, :self.nb] @ Cb[:, :self.nb].T
+        self._Db = Cb[:, :self.nb] @ Cb[:, :self.nb].T
 
     def set_focks(self):
         (self._Fa, self._Fb), = self.code.get_two_el_fock((self.Da, self.Db))
@@ -519,10 +519,11 @@ class RoothanIterator(SCFIterator, abc.ABC):
         S = self.S
         SI = np.linalg.inv(S)
 
-        self.ga = ga = S@Da@Fa - Fa@Da@S
-        self.gb = gb = S@Db@Fb - Fb@Db@S
+        self.ga = S@Da@Fa - Fa@Da@S
+        self.gb = S@Db@Fb - Fb@Db@S
 
-        gn = 2*np.einsum('ij,ij', ga + gb, SI@(ga + gb)@SI)
+        g = self.ga + self.gb
+        gn = 2*np.einsum('ij,ij', g, SI@g@SI)
 
         return math.sqrt(gn)
 
