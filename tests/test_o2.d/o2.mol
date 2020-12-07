@@ -1,0 +1,8 @@
+BASIS
+STO-3G
+O2
+=====
+Atomtypes=1 Nosymmetry
+Charge=8 Atoms=2
+O   0.0   0.0   0.0
+O   0.0   0.0   1.5

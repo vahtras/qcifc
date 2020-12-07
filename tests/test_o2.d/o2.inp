@@ -1,0 +1,17 @@
+@jobs
+task: hf
+@end
+
+@method settings
+basis: STO-3G
+basis path: ../../basis
+@end
+
+@molecule
+charge: 0
+multiplicity: 3
+units: au
+xyz:  
+O   0.0   0.0   0.0
+O   0.0   0.0   1.5
+@end 
