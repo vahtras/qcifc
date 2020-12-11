@@ -237,7 +237,13 @@ class DaltonRoothanIterator(RoothanIterator):
 
 
 class DaltonDiisIterator(DiisIterator):
-    pass
+
+    def Feff2(self):
+        Fa = self.S.I@(self.h1 + self.Fa)
+        Fb = self.S.I@(self.h1 + self.Fb)
+        Da = self.Da@self.S
+        Db = self.Db@self.S
+        return self.S@rohf.Feff(Da, Db, Fa, Fb)
 
 
 iterators = {

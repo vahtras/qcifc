@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import numpy.testing as npt 
+import numpy.testing as npt
 from . import TestQC, get_codes_settings, get_codes_ids
 
 CASE = 'heh'
@@ -488,3 +488,26 @@ class TestHeH(TestQC):
         assert it.nb == 1
         npt.assert_equal(it.occa, [0, 1])
         npt.assert_equal(it.occb, [1])
+
+    @pytest.mark.parametrize(
+        'orbital', [0]
+    )
+    def test_project_frozen(self, orbital, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=3,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+            open_shells=[orbital],
+            frozen=[orbital],
+        )
+        it = iter(code.scf)
+
+        Fao = np.array([[1, 2], [3, 4]])
+        Ffao = it.freeze(Fao)
+        Ffmo = it.Ca.T @ Ffao @ it.Ca
+
+        npt.assert_allclose(Ffmo[:, orbital], 0, atol=1e-8)
+        npt.assert_allclose(Ffmo[orbital, :], 0, atol=1e-8)

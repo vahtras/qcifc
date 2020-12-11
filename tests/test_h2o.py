@@ -127,3 +127,57 @@ class TestH2O(TestQC):
             rtol=1e-4,
             atol=1e-5
         )
+
+    @pytest.mark.parametrize(
+        'orbital', [0, 1, 2]
+    )
+    def test_project_frozen(self, orbital, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=9,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+            open_shells=[orbital],
+            frozen=[orbital],
+        )
+        it = iter(code.scf)
+
+        Fao = np.random.random(it.S.shape)
+        Fao = Fao + Fao.T
+
+        Ffao = it.freeze(Fao)
+        Ffmo = it.Ca.T @ Ffao @ it.Ca
+
+        npt.assert_allclose(Ffmo[:, orbital], 0, atol=1e-8)
+        npt.assert_allclose(Ffmo[orbital, :], 0, atol=1e-8)
+
+    @pytest.mark.parametrize(
+        'orbital', [0, 1, 2]
+    )
+    def test_project_diagonal_frozen(self, orbital, code):
+        code.set_scf_iterator(
+            'diis',
+            electrons=9,
+            max_iterations=10,
+            threshold=1e-5,
+            tmpdir=code.get_workdir(),
+            ms=1/2,
+            open_shells=[orbital],
+            frozen=[orbital],
+        )
+        it = iter(code.scf)
+
+        Fao = np.random.random(it.S.shape)
+        Fao = Fao + Fao.T
+        Fmo = it.Ca.T @ Fao @ it.Ca
+
+        Ffao = it.freeze_off_diagonal(Fao)
+        Ffmo = it.Ca.T @ Ffao @ it.Ca
+
+        npt.assert_allclose(
+            Ffmo[orbital, orbital],
+            Fmo[orbital, orbital],
+            atol=1e-8
+        )

@@ -407,7 +407,6 @@ class RoothanIterator(SCFIterator, abc.ABC):
             self.C = None
 
         self.tmpdir = kwargs.get('tmpdir', '/tmp')
-        self.nel = kwargs.get('electrons', 0)
         self.ms = Fraction(kwargs.get('ms', 0))
         self.Z = None
         self.h1 = None
@@ -420,9 +419,18 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.gb = None
         self.rohf_factors = kwargs.get('factors', (1.0, 1.0))
         self.kwargs = kwargs
-        self.occa = None
-        self.occb = None
         self.open_shells = kwargs.get('open_shells', [])
+        self.frozen_orbitals = kwargs.get('frozen', [])
+        self.loggers = kwargs.get('loggers', [])
+
+        nel = kwargs.get('electrons', 0)
+        na = (nel + 2*self.ms)//2
+        nb = (nel - 2*self.ms)//2
+        self.occa = list(range(na))
+        self.occb = list(range(nb))
+        if self.open_shells:
+            del(self.occb[self.occb.index(self.open_shells[0])])
+            self.occb.append(nb)
 
     @property
     def Da(self):
@@ -448,6 +456,18 @@ class RoothanIterator(SCFIterator, abc.ABC):
             self.set_focks()
         return self._Fb
 
+    @property
+    def na(self):
+        return len(self.occa)
+
+    @property
+    def nb(self):
+        return len(self.occb)
+
+    @property
+    def nel(self):
+        return self.na + self.nb
+
     def __repr__(self):
         kwargs = ", ".join(f'{k}={v}' for k, v in self.kwargs.items())
         return f'{self.__class__.__name__}({kwargs})'
@@ -456,8 +476,6 @@ class RoothanIterator(SCFIterator, abc.ABC):
         """
         Initial setup for SCF iterations
         """
-        self.na = (self.nel + 2*self.ms)//2
-        self.nb = (self.nel - 2*self.ms)//2
 
         self.Z = self.code.get_nuclear_repulsion()
         self.h1 = self.code.get_one_el_hamiltonian()
@@ -466,13 +484,6 @@ class RoothanIterator(SCFIterator, abc.ABC):
 
         if self.C is None:
             self.generate_start_guess_mo()
-
-        self.occa = list(range(self.na))
-        self.occb = list(range(self.nb))
-
-        if self.open_shells:
-            del(self.occb[self.occb.index(self.open_shells[0])])
-            self.occb.append(self.nb)
 
         return self
 
@@ -535,6 +546,10 @@ class RoothanIterator(SCFIterator, abc.ABC):
         self.gb = S@Db@Fb - Fb@Db@S
 
         g = self.ga + self.gb
+
+        if self.frozen_orbitals:
+            g = self.freeze(g)
+
         gn = 2*np.einsum('ij,ij', g, SI@g@SI)
 
         return math.sqrt(gn)
@@ -585,7 +600,43 @@ class RoothanIterator(SCFIterator, abc.ABC):
                 # for P, Q in ((Db, Da-Db), (Da-Db, S.I-Da))
             )
             F += V
+
+        if self.frozen_orbitals:
+            F = self.freeze_off_diagonal(F)
+
         return F
+
+    def freeze(self, F):
+        for fo in self.frozen_orbitals:
+            P_fo = self.orbital_complement_projector(fo)
+            F = P_fo @ F @ P_fo.T
+        return F
+
+    def freeze_off_diagonal(self, F):
+        for fo in self.frozen_orbitals:
+            P_fo = self.orbital_projector(fo)
+            Q_fo = self.orbital_complement_projector(fo)
+            F = Q_fo @ F @ Q_fo.T + P_fo @ F @ P_fo.T
+        return F
+
+    def orbital_density(self, orbital):
+        return np.outer(self.Ca[:, orbital], self.Ca[:, orbital])
+
+    def orbital_projector(self, orbital):
+        return self.S@self.orbital_density(orbital)
+
+    def orbital_complement_projector(self, orbital):
+        return np.eye(len(self.S)) - self.orbital_projector(orbital)
+
+    def remove_beta(self, orb):
+        if orb in self.occb:
+            del self.occb[self.occb.index(orb)]
+            self._Da = self._Db = self._Fa = self._Fb = None
+            self.it = 0
+            self.vecs.clear()
+            self.evecs.clear()
+        else:
+            print("Warning: ignoring delete of non-occupied orbital {orb}")
 
     def converged(self):
         if self.it == 0:
@@ -633,8 +684,11 @@ class DiisIterator(RoothanIterator):
 
         F = self.Fopt()
         l, V = scipy.linalg.eigh(F, self.S)
+        for logger in self.loggers:
+            logger.info(f"{self.it}," + ",".join(f'{e:10.5f}' for e in l))
         Ca = V
         Cb = Ca
+        #breakpoint()
         self.C = Ca, Cb
 
     def B(self):
