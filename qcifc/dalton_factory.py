@@ -17,18 +17,20 @@ class DaltonFactory(QuantumChemistry):
     labels = {'x': 'XDIPLEN', 'y': 'YDIPLEN', 'z': 'ZDIPLEN'}
 
     def __init__(self, **kwargs):
-        self._tmpdir = kwargs.get('tmpdir', '/tmp')
+        # self._tmpdir = kwargs.get('tmpdir', '/tmp')
         self._da = None
         self._db = None
         self.observers = []
 
     def get_workdir(self):
         """Return work directory"""
-        return self._tmpdir
+        # return self._tmpdir
+        return self.tmpdir
 
     def set_workdir(self, tmpdir):
         """Set work directory"""
-        self._tmpdir = tmpdir
+        # self._tmpdir = tmpdir
+        self.tmpdir = tmpdir
 
     def get_overlap(self):
         return one.read(

@@ -406,7 +406,8 @@ class RoothanIterator(SCFIterator, abc.ABC):
         else:
             self.C = None
 
-        self.tmpdir = kwargs.get('tmpdir', '/tmp')
+        # breakpoint()
+        self.tmpdir = kwargs.get('tmpdir', code.tmpdir)
         self.ms = Fraction(kwargs.get('ms', 0))
         self.Z = None
         self.h1 = None
@@ -688,7 +689,7 @@ class DiisIterator(RoothanIterator):
             logger.info(f"{self.it}," + ",".join(f'{e:10.5f}' for e in l))
         Ca = V
         Cb = Ca
-        #breakpoint()
+        # breakpoint()
         self.C = Ca, Cb
 
     def B(self):

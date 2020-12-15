@@ -13,7 +13,7 @@ from .core import QuantumChemistry, RoothanIterator, DiisIterator
 class VeloxChem(QuantumChemistry):
 
     def __init__(self, **kwargs):
-        self._tmpdir = kwargs.get('tmpdir', '/tmp')
+        self.tmpdir = kwargs.get('tmpdir', '/tmp')
         self.comm = MPI.COMM_WORLD
         self.rank = self.comm.Get_rank()
         self.size = self.comm.Get_size()
@@ -30,13 +30,13 @@ class VeloxChem(QuantumChemistry):
         return self.rank == vlx.mpi_master()
 
     def get_workdir(self):
-        return self._tmpdir
+        return self.tmpdir
 
     def get_number_of_electrons(self):
         return self.task.molecule.number_of_electrons()
 
     def set_workdir(self, tmpdir):
-        self._tmpdir = tmpdir
+        self.tmpdir = tmpdir
 
     def np2vlx(self, vec):
         nocc = self.task.molecule.number_of_electrons() // 2
